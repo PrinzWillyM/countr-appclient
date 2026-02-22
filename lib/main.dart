@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -271,8 +273,20 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]).then((_) {
-    runApp(const MyApp());
+    runApp(
+      DevicePreview(
+        enabled: !kReleaseMode,
+        builder: (context) => const MyApp(),
+      ),
+    );
   });
+
+  // SystemChrome.setPreferredOrientations([
+  //   DeviceOrientation.portraitUp,
+  //   DeviceOrientation.portraitDown,
+  // ]).then((_) {
+  //   runApp(const MyApp());
+  // });
 }
 
 class MyApp extends StatelessWidget {
@@ -284,6 +298,12 @@ class MyApp extends StatelessWidget {
       valueListenable: appLocaleNotifier,
       builder: (context, locale, child) {
         return MaterialApp(
+
+          // -----------------------------------------
+          locale: DevicePreview.locale(context),
+          builder: DevicePreview.appBuilder,
+          // -----------------------------------------
+
           debugShowCheckedModeBanner: false,
           title: 'Countr',
           locale: locale,
