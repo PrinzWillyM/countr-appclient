@@ -92,7 +92,6 @@ class _JassenGameState extends State<JassenGame> {
         'rules_text': 'Mode :\n\n• Chibre : Entrez les points, le reste (sur 157) va à l\'autre équipe.\n\nPour les Annonces : Activez l\'étoile. Les points sont ajoutés directement.\n\n• Differenzler : Ajoutez des joueurs. Prédisez, puis notez le résultat.',
         'add_hint': 'Nom',
       },
-      // Short versions for other languages (fallback logic applies)
       'it': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Squadra vs Squadra.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predizione punti.', 'team1': 'Noi', 'team2': 'Loro', 'weis_mode': 'Bonus', 'start': 'AVVIA', 'add_player': 'Aggiungi', 'penalty': 'Penalità' },
       'es': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Equipo vs Equipo.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predicción de puntos.', 'team1': 'Nosotros', 'team2': 'Ellos', 'weis_mode': 'Bono', 'start': 'INICIAR', 'add_player': 'Añadir', 'penalty': 'Penalización' },
       'pt': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Equipe vs Equipe.', 'mode_diff': 'Differenzler', 'desc_diff': 'Previsão de pontos.', 'team1': 'Nós', 'team2': 'Eles', 'weis_mode': 'Bônus', 'start': 'INICIAR', 'add_player': 'Adicionar', 'penalty': 'Penalidade' },
@@ -140,12 +139,9 @@ class _JassenGameState extends State<JassenGame> {
     int t2Add = 0;
 
     if (_isWeisMode) {
-      // Weis Modus: Punkte werden direkt dem Team gutgeschrieben (kein Split von 157)
       if (isTeam1) t1Add = points;
       else t2Add = points;
     } else {
-      // Stich Modus: Normales Jassen, Split von 157
-      // Alles > 157 (z.B. Match 257) zählt voll, kein Split
       if (points <= 157) {
         if (isTeam1) {
           t1Add = points;
@@ -155,7 +151,6 @@ class _JassenGameState extends State<JassenGame> {
           t1Add = 157 - points;
         }
       } else {
-        // Matchpunkte (z.B. 157 + 100 = 257)
         if (isTeam1) t1Add = points;
         else t2Add = points;
       }
@@ -166,7 +161,7 @@ class _JassenGameState extends State<JassenGame> {
       team2Score += t2Add;
       history.add({'t1': t1Add, 't2': t2Add});
       _currentInput = "";
-      _isWeisMode = false; // Reset weis mode after entry
+      _isWeisMode = false;
     });
   }
 
@@ -188,7 +183,7 @@ class _JassenGameState extends State<JassenGame> {
         diffPlayers.add({
           'name': _nameController.text,
           'total_penalty': 0,
-          'current_target': null, // Ansage
+          'current_target': null,
         });
         _nameController.clear();
       });
@@ -205,17 +200,15 @@ class _JassenGameState extends State<JassenGame> {
   void _submitDiffScore(int index, int madePoints) {
     var p = diffPlayers[index];
     if (p['current_target'] == null) {
-      // Set Ansage
       setState(() {
-        p['current_target'] = madePoints; // Reuse parameter as target
+        p['current_target'] = madePoints;
       });
     } else {
-      // Calc Diff
       int target = p['current_target'];
       int diff = (target - madePoints).abs();
       setState(() {
         p['total_penalty'] += diff;
-        p['current_target'] = null; // Reset für nächste Runde
+        p['current_target'] = null;
       });
     }
   }
@@ -300,9 +293,9 @@ class _JassenGameState extends State<JassenGame> {
   Widget _buildSchieberUI() {
     return Column(
       children: [
-        // Score Display
+        // Score Display (jetzt etwas kleiner, flex: 3)
         Expanded(
-          flex: 4,
+          flex: 3,
           child: Row(
             children: [
               _buildTeamColumn(_t('team1'), team1Score),
@@ -312,91 +305,109 @@ class _JassenGameState extends State<JassenGame> {
           ),
         ),
 
-        // Input Area
-        Container(
-          color: surfaceColor,
-          padding: const EdgeInsets.all(15),
-          child: Column(
-            children: [
-              // Weis Toggle & Input Display
-              Row(
-                children: [
-                  // Weis Toggle
-                  GestureDetector(
-                    onTap: () => setState(() => _isWeisMode = !_isWeisMode),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
+        // Input Area (jetzt mehr Platz, flex: 6)
+        Expanded(
+          flex: 6,
+          child: Container(
+            width: double.infinity,
+            color: surfaceColor,
+            padding: const EdgeInsets.only(top: 25, left: 15, right: 15, bottom: 20),
+            child: Column(
+              children: [
+                // Weis Toggle & Input Display
+                Row(
+                  children: [
+                    // Weis Toggle
+                    GestureDetector(
+                      onTap: () => setState(() => _isWeisMode = !_isWeisMode),
+                      child: Container(
+                        height: 70, // Größer
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                            color: _isWeisMode ? primaryColor : Colors.black26,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: _isWeisMode ? Colors.white : Colors.transparent)
+                        ),
+                        child: Icon(Icons.star, color: _isWeisMode ? Colors.black : Colors.grey, size: 30),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    // Display Input
+                    Expanded(
+                      child: Container(
+                        height: 70, // Größer
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(15)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                                _isWeisMode ? _t('weis_on') : _t('weis_off'),
+                                style: TextStyle(color: _isWeisMode ? primaryColor : Colors.grey, fontSize: 14)
+                            ),
+                            Text(
+                              _currentInput.isEmpty ? "0" : _currentInput,
+                              style: TextStyle(color: _currentInput.isEmpty ? Colors.white24 : Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Spacer(), // Schiebt das Keypad etwas nach unten/zentriert es
+
+                // Keypad
+                _buildKeypad(),
+
+                const Spacer(),
+
+                // Assign Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _currentInput.isEmpty ? null : () => _submitSchieberScore(true),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: _isWeisMode ? Colors.orange : primaryColor,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                        ),
+                        child: Text(_t('team1'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Container(
                       decoration: BoxDecoration(
-                          color: _isWeisMode ? primaryColor : Colors.black26,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: _isWeisMode ? Colors.white : Colors.transparent)
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(15)
                       ),
-                      child: Icon(Icons.star, color: _isWeisMode ? Colors.black : Colors.grey),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Display Input
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                      decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(10)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                              _isWeisMode ? _t('weis_on') : _t('weis_off'),
-                              style: TextStyle(color: _isWeisMode ? primaryColor : Colors.grey, fontSize: 12)
-                          ),
-                          Text(
-                            _currentInput.isEmpty ? "0" : _currentInput,
-                            style: TextStyle(color: _currentInput.isEmpty ? Colors.white24 : Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                      child: IconButton(
+                        icon: const Icon(Icons.undo, color: Colors.grey),
+                        iconSize: 30,
+                        padding: const EdgeInsets.all(15),
+                        onPressed: history.isEmpty ? null : _undo,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              // Keypad
-              _buildKeypad(),
-              const SizedBox(height: 10),
-              // Assign Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _currentInput.isEmpty ? null : () => _submitSchieberScore(true),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: _isWeisMode ? Colors.orange : primaryColor,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _currentInput.isEmpty ? null : () => _submitSchieberScore(false),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: _isWeisMode ? Colors.orange : primaryColor,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                        ),
+                        child: Text(_t('team2'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
                       ),
-                      child: Text(_t('team1'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  IconButton(
-                    icon: const Icon(Icons.undo, color: Colors.grey),
-                    onPressed: history.isEmpty ? null : _undo,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _currentInput.isEmpty ? null : () => _submitSchieberScore(false),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: _isWeisMode ? Colors.orange : primaryColor,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                      ),
-                      child: Text(_t('team2'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    ),
-                  ),
-                ],
-              )
-            ],
+                  ],
+                )
+              ],
+            ),
           ),
         ),
       ],
@@ -423,15 +434,15 @@ class _JassenGameState extends State<JassenGame> {
     return Column(
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: ["1","2","3"].map(_keyBtn).toList()),
-        const SizedBox(height: 8),
+        const SizedBox(height: 15), // Mehr Abstand
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: ["4","5","6"].map(_keyBtn).toList()),
-        const SizedBox(height: 8),
+        const SizedBox(height: 15),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: ["7","8","9"].map(_keyBtn).toList()),
-        const SizedBox(height: 8),
+        const SizedBox(height: 15),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
           _iconKeyBtn(Icons.backspace, _backspace),
           _keyBtn("0"),
-          const SizedBox(width: 80, height: 50),
+          const SizedBox(width: 90, height: 65), // Platzhalter für Layout
         ]),
       ],
     );
@@ -439,22 +450,32 @@ class _JassenGameState extends State<JassenGame> {
 
   Widget _keyBtn(String label) {
     return SizedBox(
-      width: 80, height: 50,
+      width: 90, height: 65, // Grösser
       child: ElevatedButton(
         onPressed: () { HapticFeedback.selectionClick(); _addInput(label); },
-        style: ElevatedButton.styleFrom(backgroundColor: activeColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-        child: Text(label, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        style: ElevatedButton.styleFrom(
+            backgroundColor: activeColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            elevation: 4
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
       ),
     );
   }
 
   Widget _iconKeyBtn(IconData icon, VoidCallback onTap) {
     return SizedBox(
-      width: 80, height: 50,
+      width: 90, height: 65, // Grösser
       child: ElevatedButton(
         onPressed: () { HapticFeedback.selectionClick(); onTap(); },
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.3), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-        child: Icon(icon),
+        style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red.withOpacity(0.3),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            elevation: 0
+        ),
+        child: Icon(icon, size: 28),
       ),
     );
   }
