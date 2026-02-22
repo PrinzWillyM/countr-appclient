@@ -260,13 +260,18 @@ class _JassenGameState extends State<JassenGame> {
   }
 
   Widget _buildModeSelector() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        _modeCard(JassMode.schieber, Icons.edit_note, _t('mode_schieber'), _t('desc_schieber')),
-        const SizedBox(height: 15),
-        _modeCard(JassMode.differenzler, Icons.track_changes, _t('mode_diff'), _t('desc_diff')),
-      ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _modeCard(JassMode.schieber, Icons.edit_note, _t('mode_schieber'), _t('desc_schieber')),
+            const SizedBox(height: 15),
+            _modeCard(JassMode.differenzler, Icons.track_changes, _t('mode_diff'), _t('desc_diff')),
+          ],
+        ),
+      ),
     );
   }
 
