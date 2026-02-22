@@ -26,6 +26,9 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
 
   final TextEditingController _renameController = TextEditingController();
 
+  // Steuert, welches Setup-Menü gerade offen ist (0=nichts, 1=Life, 2=Players)
+  int _activeMenu = 0;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +98,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
         'name': 'P${index + 1}',
         'life': startLife,
       });
+      _activeMenu = 0; // Menü schließen beim Reset
     });
   }
 
@@ -102,6 +106,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
     HapticFeedback.selectionClick();
     setState(() {
       players[index]['life'] += amount;
+      _activeMenu = 0; // Schließt das Menü, falls man anfängt zu tippen
     });
   }
 
@@ -111,6 +116,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: primaryColor)),
         title: Text(_t('rename_title'), style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: _renameController,
@@ -145,6 +151,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: primaryColor)),
         title: Text(_t('rules_title'), style: TextStyle(color: primaryColor)),
         content: Text(_t('rules_text'), style: const TextStyle(color: Colors.white70, height: 1.5)),
         actions: [
@@ -158,87 +165,155 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        title: Text(_t('title')),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: _showRules,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // --- TOP MENU ---
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-            color: Colors.black12,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildConfigButton(
-                    icon: Icons.favorite,
-                    label: "$startLife",
-                    title: _t('start_life'),
-                    onTap: _showLifePicker,
-                  ),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: _buildConfigButton(
-                    icon: Icons.groups,
-                    label: "$playerCount",
-                    title: _t('players'),
-                    onTap: _showPlayerCountPicker,
-                  ),
-                ),
-                const SizedBox(width: 15),
-                // Reset Button
-                Container(
-                  height: 60,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: primaryColor.withAlpha(50)),
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.refresh, color: primaryColor),
-                    onPressed: _resetGame,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        if (_activeMenu != 0) setState(() => _activeMenu = 0);
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          title: Text(_t('title')),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: primaryColor,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: _showRules,
             ),
-          ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // --- TOP MENU ---
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+              color: Colors.black12,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildConfigButton(
+                          icon: Icons.favorite,
+                          label: "$startLife",
+                          title: _t('start_life'),
+                          isActive: _activeMenu == 1,
+                          onTap: () => setState(() => _activeMenu = _activeMenu == 1 ? 0 : 1),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: _buildConfigButton(
+                          icon: Icons.groups,
+                          label: "$playerCount",
+                          title: _t('players'),
+                          isActive: _activeMenu == 2,
+                          onTap: () => setState(() => _activeMenu = _activeMenu == 2 ? 0 : 2),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      // Reset Button
+                      Container(
+                        height: 60,
+                        width: 60,
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: primaryColor.withAlpha(50)),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.refresh, color: primaryColor),
+                          onPressed: _resetGame,
+                        ),
+                      ),
+                    ],
+                  ),
 
-          // --- GAME AREA ---
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(15.0), // Padding around the whole area
-              child: playerCount == 2
-                  ? _buildTwoPlayerLayout()
-                  : _buildGridPlayerLayout(),
+                  // --- INLINE SCHIEBEREGLER / AUSWAHL ---
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: _activeMenu != 0 ? 70 : 0,
+                    margin: EdgeInsets.only(top: _activeMenu != 0 ? 15 : 0),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _activeMenu == 1
+                            ? _buildLifeOptions()
+                            : (_activeMenu == 2 ? _buildPlayerOptions() : []),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // --- GAME AREA ---
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: playerCount == 2
+                    ? _buildTwoPlayerLayout()
+                    : _buildGridPlayerLayout(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildConfigButton({required IconData icon, required String label, required String title, required VoidCallback onTap}) {
+  List<Widget> _buildLifeOptions() {
+    final options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 80, 100];
+    return options.map((val) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: ChoiceChip(
+        label: Text("$val", style: TextStyle(color: startLife == val ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        selected: startLife == val,
+        selectedColor: primaryColor,
+        backgroundColor: surfaceColor,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+        onSelected: (_) {
+          setState(() {
+            startLife = val;
+            _activeMenu = 0;
+            _resetGame();
+          });
+        },
+      ),
+    )).toList();
+  }
+
+  List<Widget> _buildPlayerOptions() {
+    return [2, 3, 4, 5, 6].map((val) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: ChoiceChip(
+        label: Text("$val", style: TextStyle(color: playerCount == val ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        selected: playerCount == val,
+        selectedColor: primaryColor,
+        backgroundColor: surfaceColor,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+        onSelected: (_) {
+          setState(() {
+            playerCount = val;
+            _activeMenu = 0;
+            _resetGame();
+          });
+        },
+      ),
+    )).toList();
+  }
+
+  Widget _buildConfigButton({required IconData icon, required String label, required String title, required bool isActive, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         height: 60,
         decoration: BoxDecoration(
-          color: surfaceColor,
+          color: isActive ? primaryColor.withAlpha(40) : surfaceColor,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: primaryColor.withAlpha(50)),
+          border: Border.all(color: isActive ? primaryColor : primaryColor.withAlpha(50), width: isActive ? 2 : 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -249,7 +324,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                Text(title, style: TextStyle(color: isActive ? primaryColor : Colors.grey, fontSize: 10)),
                 Text(label, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             )
@@ -274,7 +349,6 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
             onRename: () => _showRenameDialog(0),
           ),
         ),
-        // Abstand
         const SizedBox(height: 15),
         // P2
         Expanded(
@@ -295,8 +369,8 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.85,
-        crossAxisSpacing: 15, // Mehr Abstand
-        mainAxisSpacing: 15,  // Mehr Abstand
+        crossAxisSpacing: 15,
+        mainAxisSpacing: 15,
       ),
       itemCount: playerCount,
       itemBuilder: (context, index) {
@@ -308,80 +382,6 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
           onRename: () => _showRenameDialog(index),
         );
       },
-    );
-  }
-
-  // --- PICKERS ---
-
-  void _showLifePicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: surfaceColor,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        height: 200,
-        child: Column(
-          children: [
-            Text(_t('start_life'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [20, 30, 40, 50, 60, 100].map((val) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: ChoiceChip(
-                    label: Text("$val", style: TextStyle(color: startLife == val ? Colors.black : Colors.white, fontSize: 18)),
-                    selected: startLife == val,
-                    selectedColor: primaryColor,
-                    backgroundColor: bgColor,
-                    padding: const EdgeInsets.all(12),
-                    onSelected: (_) {
-                      setState(() { startLife = val; _resetGame(); });
-                      Navigator.pop(context);
-                    },
-                  ),
-                )).toList(),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPlayerCountPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: surfaceColor,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        height: 200,
-        child: Column(
-          children: [
-            Text(_t('players'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [2, 3, 4, 5, 6].map((val) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: ChoiceChip(
-                    label: Text("$val", style: TextStyle(color: playerCount == val ? Colors.black : Colors.white, fontSize: 18)),
-                    selected: playerCount == val,
-                    selectedColor: primaryColor,
-                    backgroundColor: bgColor,
-                    padding: const EdgeInsets.all(12),
-                    onSelected: (_) {
-                      setState(() { playerCount = val; _resetGame(); });
-                      Navigator.pop(context);
-                    },
-                  ),
-                )).toList(),
-              ),
-            )
-          ],
-        ),
-      ),
     );
   }
 }
@@ -399,14 +399,14 @@ class _SimpleLifeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 20), // Mehr Platz oben für Namen
+      padding: const EdgeInsets.only(top: 20),
       decoration: BoxDecoration(
         color: const Color(0xFF30363B),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(color: color.withOpacity(0.3), width: 2),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Verteilt Inhalt
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Name (klickbar)
           GestureDetector(
@@ -428,7 +428,7 @@ class _SimpleLifeCard extends StatelessWidget {
             ),
           ),
 
-          // Life (Centered via Spacer)
+          // Life
           Spacer(),
           Text("$life", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 80, height: 1.0)),
           Spacer(),
@@ -441,7 +441,7 @@ class _SimpleLifeCard extends StatelessWidget {
                   onTap: () => onChanged(-1),
                   borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(23)),
                   child: Container(
-                    height: 70, // Grösser
+                    height: 70,
                     decoration: const BoxDecoration(
                       color: Colors.black26,
                       borderRadius: BorderRadius.only(bottomLeft: Radius.circular(23)),
@@ -456,7 +456,7 @@ class _SimpleLifeCard extends StatelessWidget {
                   onTap: () => onChanged(1),
                   borderRadius: const BorderRadius.only(bottomRight: Radius.circular(23)),
                   child: Container(
-                    height: 70, // Grösser
+                    height: 70,
                     decoration: const BoxDecoration(
                       color: Colors.black26,
                       borderRadius: BorderRadius.only(bottomRight: Radius.circular(23)),
