@@ -29,6 +29,8 @@ class _JassenGameState extends State<JassenGame> {
   // Schieber State
   int team1Score = 0;
   int team2Score = 0;
+  String team1Name = "Team 1"; // Wird in initState übersetzt
+  String team2Name = "Team 2"; // Wird in initState übersetzt
   List<Map<String, int>> history = [];
   String _currentInput = "";
   bool _isWeisMode = false; // Wenn true: Punkte werden direkt addiert (kein Split)
@@ -49,6 +51,9 @@ class _JassenGameState extends State<JassenGame> {
     if (mounted) {
       setState(() {
         _currentLang = prefs.getString('language_code') ?? 'de';
+        // Setze Standardnamen für Teams basierend auf der geladenen Sprache
+        team1Name = _t('team1');
+        team2Name = _t('team2');
       });
     }
   }
@@ -66,7 +71,7 @@ class _JassenGameState extends State<JassenGame> {
         'score': 'Erreicht', 'penalty': 'Strafe', 'weis_mode': 'Weis / Bonus',
         'weis_on': 'Weis Modus: AN', 'weis_off': 'Stich Modus',
         'rules_text': 'Wähle deinen Modus:\n\n• Schieber: Gib die Punkte eines Teams ein. Der Rest von 157 geht automatisch an das andere Team.\n\nFür Weisen (Bonus): Aktiviere den Stern-Button. Dann werden Punkte direkt addiert.\n\n• Differenzler: Füge Spieler hinzu. In jeder Runde sagt man Punkte an und trägt danach das Resultat ein.',
-        'add_hint': 'Name',
+        'add_hint': 'Name', 'rename_title': 'Name ändern', 'cancel': 'ABBRECHEN', 'save': 'SPEICHERN'
       },
       'en': {
         'title': 'Jass Scoreboard', 'rules': 'Rules', 'ok': 'GOT IT',
@@ -78,7 +83,7 @@ class _JassenGameState extends State<JassenGame> {
         'score': 'Score', 'penalty': 'Penalty', 'weis_mode': 'Bonus / Weis',
         'weis_on': 'Bonus Mode: ON', 'weis_off': 'Trick Mode',
         'rules_text': 'Choose mode:\n\n• Schieber: Enter points for one team, remainder of 157 goes to the other.\n\nFor Bonus (Weis): Toggle the Star button. Points are added directly.\n\n• Differenzler: Add players. Predict score, then enter result.',
-        'add_hint': 'Name',
+        'add_hint': 'Name', 'rename_title': 'Rename', 'cancel': 'CANCEL', 'save': 'SAVE'
       },
       'fr': {
         'title': 'Jass (Chibre)', 'rules': 'Règles', 'ok': 'COMPRIS',
@@ -90,24 +95,24 @@ class _JassenGameState extends State<JassenGame> {
         'score': 'Score', 'penalty': 'Pénalité', 'weis_mode': 'Annonce / Bonus',
         'weis_on': 'Mode Annonce : ON', 'weis_off': 'Mode Pli',
         'rules_text': 'Mode :\n\n• Chibre : Entrez les points, le reste (sur 157) va à l\'autre équipe.\n\nPour les Annonces : Activez l\'étoile. Les points sont ajoutés directement.\n\n• Differenzler : Ajoutez des joueurs. Prédisez, puis notez le résultat.',
-        'add_hint': 'Nom',
+        'add_hint': 'Nom', 'rename_title': 'Renommer', 'cancel': 'ANNULER', 'save': 'ENREGISTRER'
       },
-      'it': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Squadra vs Squadra.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predizione punti.', 'team1': 'Noi', 'team2': 'Loro', 'weis_mode': 'Bonus', 'start': 'AVVIA', 'add_player': 'Aggiungi', 'penalty': 'Penalità' },
-      'es': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Equipo vs Equipo.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predicción de puntos.', 'team1': 'Nosotros', 'team2': 'Ellos', 'weis_mode': 'Bono', 'start': 'INICIAR', 'add_player': 'Añadir', 'penalty': 'Penalización' },
-      'pt': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Equipe vs Equipe.', 'mode_diff': 'Differenzler', 'desc_diff': 'Previsão de pontos.', 'team1': 'Nós', 'team2': 'Eles', 'weis_mode': 'Bônus', 'start': 'INICIAR', 'add_player': 'Adicionar', 'penalty': 'Penalidade' },
-      'nl': { 'title': 'Jassen', 'mode_schieber': 'Schieber', 'desc_schieber': 'Team vs Team.', 'mode_diff': 'Differenzler', 'desc_diff': 'Punten voorspellen.', 'team1': 'Wij', 'team2': 'Zij', 'weis_mode': 'Bonus', 'start': 'STARTEN', 'add_player': 'Toevoegen', 'penalty': 'Straf' },
-      'pl': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Drużyna vs Drużyna.', 'mode_diff': 'Differenzler', 'desc_diff': 'Przewidywanie punktów.', 'team1': 'My', 'team2': 'Oni', 'weis_mode': 'Bonus', 'start': 'START', 'add_player': 'Dodaj', 'penalty': 'Kara' },
-      'tr': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Takım vs Takım.', 'mode_diff': 'Differenzler', 'desc_diff': 'Puan tahmini.', 'team1': 'Biz', 'team2': 'Onlar', 'weis_mode': 'Bonus', 'start': 'BAŞLAT', 'add_player': 'Ekle', 'penalty': 'Ceza' },
-      'id': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Tim vs Tim.', 'mode_diff': 'Differenzler', 'desc_diff': 'Prediksi poin.', 'team1': 'Kami', 'team2': 'Mereka', 'weis_mode': 'Bonus', 'start': 'MULAI', 'add_player': 'Tambah', 'penalty': 'Hukuman' },
-      'sv': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Lag mot Lag.', 'mode_diff': 'Differenzler', 'desc_diff': 'Poängförutsägelse.', 'team1': 'Vi', 'team2': 'Dem', 'weis_mode': 'Bonus', 'start': 'STARTA', 'add_player': 'Lägg till', 'penalty': 'Straff' },
-      'hr': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Tim protiv Tima.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predviđanje bodova.', 'team1': 'Mi', 'team2': 'Oni', 'weis_mode': 'Bonus', 'start': 'POKRENI', 'add_player': 'Dodaj', 'penalty': 'Kazna' },
-      'ru': { 'title': 'Ясс', 'mode_schieber': 'Шибер', 'desc_schieber': 'Команда на команду.', 'mode_diff': 'Дифференцлер', 'desc_diff': 'Прогноз очков.', 'team1': 'Мы', 'team2': 'Они', 'weis_mode': 'Бонус', 'start': 'НАЧАТЬ', 'add_player': 'Добавить', 'penalty': 'Штраф' },
-      'ja': { 'title': 'ヤス', 'mode_schieber': 'シーバー', 'desc_schieber': 'チーム対チーム。', 'mode_diff': 'ディフェレンツラー', 'desc_diff': 'ポイント予測。', 'team1': '私たち', 'team2': '彼ら', 'weis_mode': 'ボーナス', 'start': '開始', 'add_player': '追加', 'penalty': 'ペナルティ' },
-      'ko': { 'title': '야스', 'mode_schieber': '쉬버', 'desc_schieber': '팀 대 팀.', 'mode_diff': '디퍼렌즐러', 'desc_diff': '점수 예측.', 'team1': '우리', 'team2': '그들', 'weis_mode': '보너스', 'start': '시작', 'add_player': '추가', 'penalty': '벌칙' },
-      'zh': { 'title': '雅斯', 'mode_schieber': '席伯', 'desc_schieber': '团队对团队。', 'mode_diff': '差异赛', 'desc_diff': '分数预测。', 'team1': '我们', 'team2': '他们', 'weis_mode': '奖励', 'start': '开始', 'add_player': '添加', 'penalty': '惩罚' },
-      'hi': { 'title': 'जैस', 'mode_schieber': 'शिबर', 'desc_schieber': 'टीम बनाम टीम।', 'mode_diff': 'डिफरेंसलर', 'desc_diff': 'अंक भविष्यवाणी।', 'team1': 'हम', 'team2': 'वे', 'weis_mode': 'बोनस', 'start': 'शुरू', 'add_player': 'जोड़ें', 'penalty': 'जुर्माना' },
-      'bn': { 'title': 'জাস', 'mode_schieber': 'শিবার', 'desc_schieber': 'দল বনাম দল।', 'mode_diff': 'ডিফারেন্সলার', 'desc_diff': 'স্কোর পূর্বাভাস।', 'team1': 'আমরা', 'team2': 'তারা', 'weis_mode': 'বোনাস', 'start': 'শুরু', 'add_player': 'যোগ', 'penalty': 'জরিমানা' },
-      'ar': { 'title': 'جاس', 'mode_schieber': 'شيبر', 'desc_schieber': 'فريق ضد فريق.', 'mode_diff': 'ديفيرنزلر', 'desc_diff': 'توقع النقاط.', 'team1': 'نحن', 'team2': 'هم', 'weis_mode': 'مكافأة', 'start': 'بدء', 'add_player': 'إضافة', 'penalty': 'عقوبة' },
+      'it': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Squadra vs Squadra.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predizione punti.', 'team1': 'Noi', 'team2': 'Loro', 'weis_mode': 'Bonus', 'start': 'AVVIA', 'add_player': 'Aggiungi', 'penalty': 'Penalità', 'rename_title': 'Rinomina', 'cancel': 'ANNULLA', 'save': 'SALVA' },
+      'es': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Equipo vs Equipo.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predicción de puntos.', 'team1': 'Nosotros', 'team2': 'Ellos', 'weis_mode': 'Bono', 'start': 'INICIAR', 'add_player': 'Añadir', 'penalty': 'Penalización', 'rename_title': 'Renombrar', 'cancel': 'CANCELAR', 'save': 'GUARDAR' },
+      'pt': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Equipe vs Equipe.', 'mode_diff': 'Differenzler', 'desc_diff': 'Previsão de pontos.', 'team1': 'Nós', 'team2': 'Eles', 'weis_mode': 'Bônus', 'start': 'INICIAR', 'add_player': 'Adicionar', 'penalty': 'Penalidade', 'rename_title': 'Renomear', 'cancel': 'CANCELAR', 'save': 'SALVAR' },
+      'nl': { 'title': 'Jassen', 'mode_schieber': 'Schieber', 'desc_schieber': 'Team vs Team.', 'mode_diff': 'Differenzler', 'desc_diff': 'Punten voorspellen.', 'team1': 'Wij', 'team2': 'Zij', 'weis_mode': 'Bonus', 'start': 'STARTEN', 'add_player': 'Toevoegen', 'penalty': 'Straf', 'rename_title': 'Wijzigen', 'cancel': 'ANNULEREN', 'save': 'OPSLAAN' },
+      'pl': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Drużyna vs Drużyna.', 'mode_diff': 'Differenzler', 'desc_diff': 'Przewidywanie punktów.', 'team1': 'My', 'team2': 'Oni', 'weis_mode': 'Bonus', 'start': 'START', 'add_player': 'Dodaj', 'penalty': 'Kara', 'rename_title': 'Zmień nazwę', 'cancel': 'ANULUJ', 'save': 'ZAPISZ' },
+      'tr': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Takım vs Takım.', 'mode_diff': 'Differenzler', 'desc_diff': 'Puan tahmini.', 'team1': 'Biz', 'team2': 'Onlar', 'weis_mode': 'Bonus', 'start': 'BAŞLAT', 'add_player': 'Ekle', 'penalty': 'Ceza', 'rename_title': 'İsim Değiştir', 'cancel': 'İPTAL', 'save': 'KAYDET' },
+      'id': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Tim vs Tim.', 'mode_diff': 'Differenzler', 'desc_diff': 'Prediksi poin.', 'team1': 'Kami', 'team2': 'Mereka', 'weis_mode': 'Bonus', 'start': 'MULAI', 'add_player': 'Tambah', 'penalty': 'Hukuman', 'rename_title': 'Ubah Nama', 'cancel': 'BATAL', 'save': 'SIMPAN' },
+      'sv': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Lag mot Lag.', 'mode_diff': 'Differenzler', 'desc_diff': 'Poängförutsägelse.', 'team1': 'Vi', 'team2': 'Dem', 'weis_mode': 'Bonus', 'start': 'STARTA', 'add_player': 'Lägg till', 'penalty': 'Straff', 'rename_title': 'Byt namn', 'cancel': 'AVBRYT', 'save': 'SPARA' },
+      'hr': { 'title': 'Jass', 'mode_schieber': 'Schieber', 'desc_schieber': 'Tim protiv Tima.', 'mode_diff': 'Differenzler', 'desc_diff': 'Predviđanje bodova.', 'team1': 'Mi', 'team2': 'Oni', 'weis_mode': 'Bonus', 'start': 'POKRENI', 'add_player': 'Dodaj', 'penalty': 'Kazna', 'rename_title': 'Promijeni ime', 'cancel': 'ODUSTANI', 'save': 'SPREMI' },
+      'ru': { 'title': 'Ясс', 'mode_schieber': 'Шибер', 'desc_schieber': 'Команда на команду.', 'mode_diff': 'Дифференцлер', 'desc_diff': 'Прогноз очков.', 'team1': 'Мы', 'team2': 'Они', 'weis_mode': 'Бонус', 'start': 'НАЧАТЬ', 'add_player': 'Добавить', 'penalty': 'Штраф', 'rename_title': 'Переименовать', 'cancel': 'ОТМЕНА', 'save': 'СОХРАНИТЬ' },
+      'ja': { 'title': 'ヤス', 'mode_schieber': 'シーバー', 'desc_schieber': 'チーム対チーム。', 'mode_diff': 'ディフェレンツラー', 'desc_diff': 'ポイント予測。', 'team1': '私たち', 'team2': '彼ら', 'weis_mode': 'ボーナス', 'start': '開始', 'add_player': '追加', 'penalty': 'ペナルティ', 'rename_title': '名前を変更', 'cancel': 'キャンセル', 'save': '保存' },
+      'ko': { 'title': '야스', 'mode_schieber': '쉬버', 'desc_schieber': '팀 대 팀.', 'mode_diff': '디퍼렌즐러', 'desc_diff': '점수 예측.', 'team1': '우리', 'team2': '그들', 'weis_mode': '보너스', 'start': '시작', 'add_player': '추가', 'penalty': '벌칙', 'rename_title': '이름 변경', 'cancel': '취소', 'save': '저장' },
+      'zh': { 'title': '雅斯', 'mode_schieber': '席伯', 'desc_schieber': '团队对团队。', 'mode_diff': '差异赛', 'desc_diff': '分数预测。', 'team1': '我们', 'team2': '他们', 'weis_mode': '奖励', 'start': '开始', 'add_player': '添加', 'penalty': '惩罚', 'rename_title': '重命名', 'cancel': '取消', 'save': '保存' },
+      'hi': { 'title': 'जैस', 'mode_schieber': 'शिबर', 'desc_schieber': 'टीम बनाम टीम।', 'mode_diff': 'डिफरेंसलर', 'desc_diff': 'अंक भविष्यवाणी।', 'team1': 'हम', 'team2': 'वे', 'weis_mode': 'बोनस', 'start': 'शुरू', 'add_player': 'जोड़ें', 'penalty': 'जुर्माना', 'rename_title': 'नाम बदलें', 'cancel': 'रद्द करें', 'save': 'सहेजें' },
+      'bn': { 'title': 'জাস', 'mode_schieber': 'শিবার', 'desc_schieber': 'দল বনাম দল।', 'mode_diff': 'ডিফারেন্সলার', 'desc_diff': 'স্কোর পূর্বাভাস।', 'team1': 'আমরা', 'team2': 'তারা', 'weis_mode': 'বোনাস', 'start': 'শুরু', 'add_player': 'যোগ', 'penalty': 'জরিমানা', 'rename_title': 'নাম পরিবর্তন', 'cancel': 'বাতিল', 'save': 'সংরক্ষণ' },
+      'ar': { 'title': 'جاس', 'mode_schieber': 'شيبر', 'desc_schieber': 'فريق ضد فريق.', 'mode_diff': 'ديفيرنزلر', 'desc_diff': 'توقع النقاط.', 'team1': 'نحن', 'team2': 'هم', 'weis_mode': 'مكافأة', 'start': 'بدء', 'add_player': 'إضافة', 'penalty': 'عقوبة', 'rename_title': 'تغيير الاسم', 'cancel': 'إلغاء', 'save': 'حفظ' },
     };
 
     if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {
@@ -173,6 +178,50 @@ class _JassenGameState extends State<JassenGame> {
         team2Score -= last['t2']!;
       });
     }
+  }
+
+  void _showRenameDialog(bool isTeam1) {
+    _nameController.text = isTeam1 ? team1Name : team2Name;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: primaryColor)),
+        title: Text(_t('rename_title'), style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: _nameController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor, width: 2)),
+          ),
+          onSubmitted: (_) {
+            setState(() {
+              if (isTeam1) team1Name = _nameController.text.trim();
+              else team2Name = _nameController.text.trim();
+            });
+            Navigator.pop(context);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_t('cancel'), style: const TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                if (isTeam1) team1Name = _nameController.text.trim();
+                else team2Name = _nameController.text.trim();
+              });
+              Navigator.pop(context);
+            },
+            child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   // --- LOGIC: DIFFERENZLER ---
@@ -293,25 +342,25 @@ class _JassenGameState extends State<JassenGame> {
   Widget _buildSchieberUI() {
     return Column(
       children: [
-        // Score Display (jetzt etwas kleiner, flex: 3)
+        // Score Display
         Expanded(
-          flex: 3,
+          flex: 2,
           child: Row(
             children: [
-              _buildTeamColumn(_t('team1'), team1Score),
+              _buildTeamColumn(team1Name, team1Score, true),
               Container(width: 2, color: Colors.black26),
-              _buildTeamColumn(_t('team2'), team2Score),
+              _buildTeamColumn(team2Name, team2Score, false),
             ],
           ),
         ),
 
-        // Input Area (jetzt mehr Platz, flex: 6)
+        // Input Area
         Expanded(
-          flex: 6,
+          flex: 5,
           child: Container(
             width: double.infinity,
             color: surfaceColor,
-            padding: const EdgeInsets.only(top: 25, left: 15, right: 15, bottom: 20),
+            padding: const EdgeInsets.only(top: 25, left: 20, right: 20, bottom: 30),
             child: Column(
               children: [
                 // Weis Toggle & Input Display
@@ -321,7 +370,7 @@ class _JassenGameState extends State<JassenGame> {
                     GestureDetector(
                       onTap: () => setState(() => _isWeisMode = !_isWeisMode),
                       child: Container(
-                        height: 70, // Größer
+                        height: 70,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
                             color: _isWeisMode ? primaryColor : Colors.black26,
@@ -335,7 +384,7 @@ class _JassenGameState extends State<JassenGame> {
                     // Display Input
                     Expanded(
                       child: Container(
-                        height: 70, // Größer
+                        height: 70,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(15)),
                         child: Row(
@@ -356,12 +405,14 @@ class _JassenGameState extends State<JassenGame> {
                   ],
                 ),
 
-                const Spacer(), // Schiebt das Keypad etwas nach unten/zentriert es
+                const SizedBox(height: 20),
 
-                // Keypad
-                _buildKeypad(),
+                // Keypad (jetzt komplett mit Flex, damit nichts abgeschnitten wird)
+                Expanded(
+                  child: _buildKeypad(),
+                ),
 
-                const Spacer(),
+                const SizedBox(height: 20),
 
                 // Assign Buttons
                 Row(
@@ -375,7 +426,7 @@ class _JassenGameState extends State<JassenGame> {
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
                         ),
-                        child: Text(_t('team1'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                        child: Text(team1Name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20), overflow: TextOverflow.ellipsis),
                       ),
                     ),
                     const SizedBox(width: 15),
@@ -401,7 +452,7 @@ class _JassenGameState extends State<JassenGame> {
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
                         ),
-                        child: Text(_t('team2'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                        child: Text(team2Name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20), overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ],
@@ -414,68 +465,109 @@ class _JassenGameState extends State<JassenGame> {
     );
   }
 
-  Widget _buildTeamColumn(String name, int score) {
+  Widget _buildTeamColumn(String name, int score, bool isTeam1) {
     return Expanded(
-      child: Container(
-        color: bgColor,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(name, style: TextStyle(color: primaryColor, fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text("$score", style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.w900)),
-          ],
+      child: GestureDetector(
+        onTap: () => _showRenameDialog(isTeam1),
+        child: Container(
+          color: Colors.transparent, // Nötig für Klick-Erkennung auf ganzer Fläche
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      name,
+                      style: TextStyle(color: primaryColor, fontSize: 22, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.edit, color: primaryColor.withOpacity(0.5), size: 16),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text("$score", style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.w900)),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  // Flexibles Keypad ohne GridView, um Overflow/Abschneiden zu verhindern
   Widget _buildKeypad() {
     return Column(
       children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: ["1","2","3"].map(_keyBtn).toList()),
-        const SizedBox(height: 15), // Mehr Abstand
-        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: ["4","5","6"].map(_keyBtn).toList()),
-        const SizedBox(height: 15),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: ["7","8","9"].map(_keyBtn).toList()),
-        const SizedBox(height: 15),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          _iconKeyBtn(Icons.backspace, _backspace),
-          _keyBtn("0"),
-          const SizedBox(width: 90, height: 65), // Platzhalter für Layout
-        ]),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: ["1", "2", "3"].map((val) => _keyBtn(val)).toList(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: ["4", "5", "6"].map((val) => _keyBtn(val)).toList(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: ["7", "8", "9"].map((val) => _keyBtn(val)).toList(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _iconKeyBtn(Icons.backspace, _backspace),
+              _keyBtn("0"),
+              Expanded(child: const SizedBox()), // Leeres Feld rechts unten
+            ],
+          ),
+        ),
       ],
     );
   }
 
   Widget _keyBtn(String label) {
-    return SizedBox(
-      width: 90, height: 65, // Grösser
-      child: ElevatedButton(
-        onPressed: () { HapticFeedback.selectionClick(); _addInput(label); },
-        style: ElevatedButton.styleFrom(
-            backgroundColor: activeColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            elevation: 4
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: ElevatedButton(
+          onPressed: () { HapticFeedback.selectionClick(); _addInput(label); },
+          style: ElevatedButton.styleFrom(
+              backgroundColor: activeColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              elevation: 4
+          ),
+          child: Text(label, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
       ),
     );
   }
 
   Widget _iconKeyBtn(IconData icon, VoidCallback onTap) {
-    return SizedBox(
-      width: 90, height: 65, // Grösser
-      child: ElevatedButton(
-        onPressed: () { HapticFeedback.selectionClick(); onTap(); },
-        style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red.withOpacity(0.3),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            elevation: 0
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: ElevatedButton(
+          onPressed: () { HapticFeedback.selectionClick(); onTap(); },
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.withOpacity(0.3),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              elevation: 0
+          ),
+          child: Icon(icon, size: 28),
         ),
-        child: Icon(icon, size: 28),
       ),
     );
   }
@@ -618,7 +710,8 @@ class _JassenGameState extends State<JassenGame> {
         return StatefulBuilder(builder: (context, setModalState) {
           return Container(
             padding: const EdgeInsets.all(20),
-            height: 500,
+            // Nutzen wir hier Media Query für eine dynamische Höhe ohne Overflow
+            height: MediaQuery.of(context).size.height * 0.6,
             child: Column(
               children: [
                 Text("${diffPlayers[index]['name']} - $title", style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
@@ -630,30 +723,45 @@ class _JassenGameState extends State<JassenGame> {
                   child: Text(buffer.isEmpty ? "0" : buffer, textAlign: TextAlign.center, style: TextStyle(color: primaryColor, fontSize: 40, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 20),
+
+                // Keypad auch hier auf Flex umgestellt, damit es auf kleinen Screens passt
                 Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 3,
-                    childAspectRatio: 1.5,
-                    mainAxisSpacing: 10, crossAxisSpacing: 10,
+                  child: Column(
                     children: [
-                      ...["1","2","3","4","5","6","7","8","9","0"].map((e) => ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: activeColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                        onPressed: () => setModalState(() => buffer += e),
-                        child: Text(e, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                      )),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.3), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                        onPressed: () => setModalState(() => buffer = ""),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: ["1", "2", "3"].map((val) => _diffKeyBtn(val, setModalState, (v) => buffer = v, buffer)).toList(),
+                        ),
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                        onPressed: () {
-                          int val = int.tryParse(buffer) ?? 0;
-                          _submitDiffScore(index, val);
-                          Navigator.pop(context);
-                        },
-                        child: const Icon(Icons.check, color: Colors.black),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: ["4", "5", "6"].map((val) => _diffKeyBtn(val, setModalState, (v) => buffer = v, buffer)).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: ["7", "8", "9"].map((val) => _diffKeyBtn(val, setModalState, (v) => buffer = v, buffer)).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _diffIconBtn(Icons.delete, Colors.red.withOpacity(0.3), Colors.white, () => setModalState(() => buffer = "")),
+                            _diffKeyBtn("0", setModalState, (v) => buffer = v, buffer),
+                            _diffIconBtn(Icons.check, primaryColor, Colors.black, () {
+                              int val = int.tryParse(buffer) ?? 0;
+                              _submitDiffScore(index, val);
+                              Navigator.pop(context);
+                            }),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -663,6 +771,48 @@ class _JassenGameState extends State<JassenGame> {
           );
         });
       },
+    );
+  }
+
+  // Hilfs-Buttons für das Differenzler Keypad (mit Flex)
+  Widget _diffKeyBtn(String label, StateSetter setModalState, Function(String) updateBuffer, String currentBuffer) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+              backgroundColor: activeColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+          ),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            if (currentBuffer.length < 4) {
+              setModalState(() => updateBuffer(currentBuffer + label));
+            }
+          },
+          child: Text(label, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Widget _diffIconBtn(IconData icon, Color bgColor, Color iconColor, VoidCallback onTap) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+              backgroundColor: bgColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+          ),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: Icon(icon, color: iconColor),
+        ),
+      ),
     );
   }
 }

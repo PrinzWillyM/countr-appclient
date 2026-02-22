@@ -306,7 +306,7 @@ class MyApp extends StatelessWidget {
 
           debugShowCheckedModeBanner: false,
           title: 'Countr',
-          locale: locale,
+          // locale: locale,
           theme: ThemeData(
             useMaterial3: true,
             scaffoldBackgroundColor: darkBackground,
