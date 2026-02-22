@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // --- DATENSTRUKTUREN ---
 
@@ -32,7 +34,9 @@ class RoundData {
 // --- WIDGET ---
 
 class FuckTheNeighborGame extends StatefulWidget {
-  const FuckTheNeighborGame({super.key});
+  final Color? themeColor;
+
+  const FuckTheNeighborGame({super.key, this.themeColor});
 
   @override
   State<FuckTheNeighborGame> createState() => _FuckTheNeighborGameState();
@@ -40,7 +44,7 @@ class FuckTheNeighborGame extends StatefulWidget {
 
 class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
   // --- FARBEN & STYLE ---
-  final Color primaryColor = const Color(0xFFEBCB63); // Gelb
+  Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Brand Yellow
   final Color bgColor = const Color(0xFF222629);
   final Color surfaceColor = const Color(0xFF30363B);
   final Color cardColor = const Color(0xFF3A4146);
@@ -48,6 +52,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
   final Color successColor = const Color(0xFF4CBF98);
 
   // --- STATE ---
+  String _currentLang = 'en';
   bool _gameStarted = false;
   bool _gameFinished = false;
   List<Player> _players = [];
@@ -56,12 +61,82 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
   final TextEditingController _nameController = TextEditingController();
   final ScrollController _scrollController = ScrollController(); // Für vertikales Scrollen
 
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _currentLang = prefs.getString('language_code') ?? 'de';
+      });
+    }
+  }
+
+  // --- ÜBERSETZUNG ---
+  String _t(String key) {
+    const Map<String, Map<String, String>> dictionary = {
+      'de': {
+        'title': 'Fuck the Neighbor', 'add_hint': 'Spieler Name', 'add_err': 'Maximal 9 Spieler!', 'add_err_min': 'Mindestens 3 Spieler!',
+        'start': 'SPIEL STARTEN', 'rules': 'Spielanleitung', 'ok': 'VERSTANDEN',
+        'round': 'R', 'score_board': 'Score Board', 'winner': 'GEWINNER', 'penalty': 'Strafpunkte',
+        'rematch': 'REVANCHE (Rotation)', 'new_game': 'Neues Spiel (Setup)',
+        'phase1': 'ANSAGEN MACHEN', 'phase2': 'STICHE VERTEILEN',
+        'starts': 'Fängt an', 'bid_info': 'Ansage', 'forbidden': 'Nicht',
+        'tricks_left': 'Noch zu verteilen: ', 'btn_p1': 'WEITER ZU DEN STICHEN', 'btn_p2': 'RUNDE ABSCHLIESSEN', 'btn_err': 'STICHE AUFGEHEN LASSEN',
+        'err_dealer': 'GEBER-REGEL: Summe darf nicht aufgehen!',
+        'r_overview': 'ÜBERSICHT', 'r_players': '3 bis 9 Personen', 'r_material': 'Jasskarten (36 Stück)', 'r_goal': '0 Punkte erreichen. (Differenz = Strafpunkte)',
+        'r_flow': 'ABLAUF', 'r_s1': 'Karten verteilen (R1 = Max, dann -1).', 'r_s2': 'Ansagen machen.', 'r_s3': 'Spielen (Höchste Karte sticht).', 'r_s4': 'Abrechnung (|Ansage - Stich|).',
+        'r_rules': 'REGELN', 'r_dealer': 'Geber-Regel', 'r_dealer_txt': 'Summe Ansagen ≠ Anzahl Karten!', 'r_block': 'Blockieren', 'r_block_txt': 'Gleiche höchste Karten blockieren sich.', 'r_final': 'Finale', 'r_final_txt': 'Letzte Karte an die Stirn (Blind)!'
+      },
+      'en': {
+        'title': 'Fuck the Neighbor', 'add_hint': 'Player Name', 'add_err': 'Max 9 players!', 'add_err_min': 'Min 3 players!',
+        'start': 'START GAME', 'rules': 'How to Play', 'ok': 'GOT IT',
+        'round': 'R', 'score_board': 'Score Board', 'winner': 'WINNER', 'penalty': 'Penalty Points',
+        'rematch': 'REMATCH (Rotate)', 'new_game': 'New Game (Setup)',
+        'phase1': 'MAKE BIDS', 'phase2': 'ENTER TRICKS',
+        'starts': 'Starts', 'bid_info': 'Bid', 'forbidden': 'Not',
+        'tricks_left': 'Remaining tricks: ', 'btn_p1': 'CONTINUE TO TRICKS', 'btn_p2': 'FINISH ROUND', 'btn_err': 'TRICKS MUST MATCH',
+        'err_dealer': 'DEALER RULE: Sum of bids cannot equal cards!',
+        'r_overview': 'OVERVIEW', 'r_players': '3 to 9 players', 'r_material': '36 Cards', 'r_goal': 'Reach 0 points. (Difference = Penalty)',
+        'r_flow': 'FLOW', 'r_s1': 'Deal cards (R1 = Max, then -1).', 'r_s2': 'Make bids.', 'r_s3': 'Play (Highest card wins trick).', 'r_s4': 'Score (|Bid - Tricks|).',
+        'r_rules': 'RULES', 'r_dealer': 'Dealer Rule', 'r_dealer_txt': 'Sum of bids ≠ Card count!', 'r_block': 'Blocking', 'r_block_txt': 'Equal highest cards block each other.', 'r_final': 'Finale', 'r_final_txt': 'Last card on forehead (Blind)!'
+      },
+      // Kurzversionen für den Rest (Fallback auf Englisch bei fehlenden Keys im Code unten)
+      'fr': { 'title': 'Fuck the Neighbor', 'add_hint': 'Nom', 'start': 'DÉMARRER', 'rules': 'Règles', 'ok': 'COMPRIS', 'winner': 'VAINQUEUR', 'rematch': 'REVANCHE', 'phase1': 'ANNONCES', 'phase2': 'PLIS', 'starts': 'Commence', 'bid_info': 'Annonce', 'btn_p1': 'SUIVANT', 'btn_p2': 'TERMINER' },
+      'it': { 'title': 'Fuck the Neighbor', 'add_hint': 'Nome', 'start': 'AVVIA', 'rules': 'Regole', 'ok': 'CAPITO', 'winner': 'VINCITORE', 'rematch': 'RIVINCITA', 'phase1': 'DICHIARAZIONI', 'phase2': 'PRESE', 'starts': 'Inizia', 'bid_info': 'Dichiar.', 'btn_p1': 'AVANTI', 'btn_p2': 'FINE' },
+      'es': { 'title': 'Fuck the Neighbor', 'add_hint': 'Nombre', 'start': 'INICIAR', 'rules': 'Reglas', 'ok': 'ENTENDIDO', 'winner': 'GANADOR', 'rematch': 'REVANCHA', 'phase1': 'APUESTAS', 'phase2': 'BAZAS', 'starts': 'Empieza', 'bid_info': 'Apuesta', 'btn_p1': 'SIGUIENTE', 'btn_p2': 'TERMINAR' },
+      'pt': { 'title': 'Fuck the Neighbor', 'add_hint': 'Nome', 'start': 'INICIAR', 'rules': 'Regras', 'ok': 'ENTENDIDO', 'winner': 'VENCEDOR', 'rematch': 'REVANCHE', 'phase1': 'APOSTAS', 'phase2': 'VAZAS', 'starts': 'Começa', 'bid_info': 'Aposta', 'btn_p1': 'PRÓXIMO', 'btn_p2': 'TERMINAR' },
+      'nl': { 'title': 'Fuck the Neighbor', 'add_hint': 'Naam', 'start': 'STARTEN', 'rules': 'Regels', 'ok': 'BEGREPEN', 'winner': 'WINNAAR', 'rematch': 'REVANCHE', 'phase1': 'BIEDEN', 'phase2': 'SLAGEN', 'starts': 'Begint', 'bid_info': 'Bod', 'btn_p1': 'VERDER', 'btn_p2': 'AFRONDEN' },
+      'pl': { 'title': 'Fuck the Neighbor', 'add_hint': 'Imię', 'start': 'START', 'rules': 'Zasady', 'ok': 'ZROZUMIAŁEM', 'winner': 'ZWYCIĘZCA', 'rematch': 'REWANŻ', 'phase1': 'LICYTACJA', 'phase2': 'LEWY', 'starts': 'Zaczyna', 'bid_info': 'Dekl.', 'btn_p1': 'DALEJ', 'btn_p2': 'ZAKOŃCZ' },
+      'tr': { 'title': 'Fuck the Neighbor', 'add_hint': 'İsim', 'start': 'BAŞLAT', 'rules': 'Kurallar', 'ok': 'ANLADIM', 'winner': 'KAZANAN', 'rematch': 'RÖVANŞ', 'phase1': 'TAHMİNLER', 'phase2': 'ELLER', 'starts': 'Başlar', 'bid_info': 'Tahmin', 'btn_p1': 'İLERİ', 'btn_p2': 'BİTİR' },
+      'id': { 'title': 'Fuck the Neighbor', 'add_hint': 'Nama', 'start': 'MULAI', 'rules': 'Aturan', 'ok': 'MENGERTI', 'winner': 'PEMENANG', 'rematch': 'TANDING ULANG', 'phase1': 'TEBAKAN', 'phase2': 'TRIK', 'starts': 'Mulai', 'bid_info': 'Tebakan', 'btn_p1': 'LANJUT', 'btn_p2': 'SELESAI' },
+      'sv': { 'title': 'Fuck the Neighbor', 'add_hint': 'Namn', 'start': 'STARTA', 'rules': 'Regler', 'ok': 'FÖRSTÅTT', 'winner': 'VINNARE', 'rematch': 'REVANSCH', 'phase1': 'BUD', 'phase2': 'STICK', 'starts': 'Börjar', 'bid_info': 'Bud', 'btn_p1': 'NÄSTA', 'btn_p2': 'AVSLUTA' },
+      'hr': { 'title': 'Fuck the Neighbor', 'add_hint': 'Ime', 'start': 'POKRENI', 'rules': 'Pravila', 'ok': 'RAZUMIJEM', 'winner': 'POBJEDNIK', 'rematch': 'UZVRAT', 'phase1': 'NAJAVE', 'phase2': 'ŠTIHOVI', 'starts': 'Počinje', 'bid_info': 'Najava', 'btn_p1': 'DALJE', 'btn_p2': 'ZAVRŠI' },
+      'ru': { 'title': 'Fuck the Neighbor', 'add_hint': 'Имя', 'start': 'НАЧАТЬ', 'rules': 'Правила', 'ok': 'ПОНЯТНО', 'winner': 'ПОБЕДИТЕЛЬ', 'rematch': 'РЕВАНШ', 'phase1': 'СТАВКИ', 'phase2': 'ВЗЯТКИ', 'starts': 'Начинает', 'bid_info': 'Ставка', 'btn_p1': 'ДАЛЕЕ', 'btn_p2': 'ЗАВЕРШИТЬ' },
+      'ja': { 'title': 'Fuck the Neighbor', 'add_hint': '名前', 'start': '開始', 'rules': 'ルール', 'ok': '了解', 'winner': '勝者', 'rematch': '再戦', 'phase1': '予想', 'phase2': 'トリック', 'starts': '最初', 'bid_info': '予想', 'btn_p1': '次へ', 'btn_p2': '完了' },
+      'ko': { 'title': 'Fuck the Neighbor', 'add_hint': '이름', 'start': '시작', 'rules': '규칙', 'ok': '확인', 'winner': '승자', 'rematch': '재대결', 'phase1': '예측', 'phase2': '트릭', 'starts': '시작', 'bid_info': '예측', 'btn_p1': '다음', 'btn_p2': '완료' },
+      'zh': { 'title': 'Fuck the Neighbor', 'add_hint': '名字', 'start': '开始', 'rules': '规则', 'ok': '明白了', 'winner': '赢家', 'rematch': '重赛', 'phase1': '预测', 'phase2': '赢墩', 'starts': '开始', 'bid_info': '预测', 'btn_p1': '下一步', 'btn_p2': '完成' },
+      'hi': { 'title': 'Fuck the Neighbor', 'add_hint': 'नाम', 'start': 'शुरू', 'rules': 'नियम', 'ok': 'समझ गया', 'winner': 'विजेता', 'rematch': 'रीमैच', 'phase1': 'भविष्यवाणी', 'phase2': 'ट्रिक्स', 'starts': 'शुरू', 'bid_info': 'बोली', 'btn_p1': 'अगला', 'btn_p2': 'समाप्त' },
+      'bn': { 'title': 'Fuck the Neighbor', 'add_hint': 'নাম', 'start': 'শুরু', 'rules': 'নিয়ম', 'ok': 'বুঝেছি', 'winner': 'বিজয়ী', 'rematch': 'রিম্যাচ', 'phase1': 'ভবিষ্যদ্বাণী', 'phase2': 'ট্রিকস', 'starts': 'শুরু', 'bid_info': 'ডাক', 'btn_p1': 'পরবর্তী', 'btn_p2': 'শেষ' },
+      'ar': { 'title': 'Fuck the Neighbor', 'add_hint': 'الاسم', 'start': 'بدء', 'rules': 'قواعد', 'ok': 'فهمت', 'winner': 'الفائز', 'rematch': 'إعادة', 'phase1': 'توقع', 'phase2': 'حيل', 'starts': 'يبدأ', 'bid_info': 'توقع', 'btn_p1': 'التالي', 'btn_p2': 'إنهاء' },
+    };
+
+    if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {
+      return dictionary[_currentLang]![key]!;
+    }
+    return dictionary['en']![key] ?? key;
+  }
+
   // --- LOGIK: SETUP ---
 
   void _addPlayer() {
     if (_nameController.text.trim().isNotEmpty) {
       if (_players.length >= 9) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Maximal 9 Spieler!")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t('add_err'))));
         return;
       }
       setState(() {
@@ -81,7 +156,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
           children: [
             Icon(Icons.menu_book, color: primaryColor),
             const SizedBox(width: 10),
-            const Flexible(child: Text("Spielanleitung", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+            Flexible(child: Text(_t('rules'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
           ],
         ),
         content: SizedBox(
@@ -90,23 +165,23 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildRuleHeader("ÜBERSICHT"),
-                _buildRuleItem(Icons.groups, "Spieler", "3 bis 9 Personen"),
-                _buildRuleItem(Icons.style, "Material", "Jasskarten (36 Stück)"),
-                _buildRuleItem(Icons.emoji_events, "Ziel", "0 Punkte erreichen. (Differenz = Strafpunkte)"),
+                _buildRuleHeader(_t('r_overview')),
+                _buildRuleItem(Icons.groups, "Spieler", _t('r_players')),
+                _buildRuleItem(Icons.style, "Material", _t('r_material')),
+                _buildRuleItem(Icons.emoji_events, "Ziel", _t('r_goal')),
 
                 const SizedBox(height: 15),
-                _buildRuleHeader("ABLAUF"),
-                _buildRuleStep("1", "Karten verteilen (R1 = Max, dann -1)."),
-                _buildRuleStep("2", "Ansagen machen."),
-                _buildRuleStep("3", "Spielen (Höchste Karte sticht)."),
-                _buildRuleStep("4", "Abrechnung (|Ansage - Stich|)."),
+                _buildRuleHeader(_t('r_flow')),
+                _buildRuleStep("1", _t('r_s1')),
+                _buildRuleStep("2", _t('r_s2')),
+                _buildRuleStep("3", _t('r_s3')),
+                _buildRuleStep("4", _t('r_s4')),
 
                 const SizedBox(height: 15),
-                _buildRuleHeader("REGELN"),
-                _buildRuleSpecial("Geber-Regel", "Summe Ansagen ≠ Anzahl Karten!"),
-                _buildRuleSpecial("Blockieren", "Gleiche höchste Karten blockieren sich."),
-                _buildRuleSpecial("Finale", "Letzte Karte an die Stirn (Blind)!"),
+                _buildRuleHeader(_t('r_rules')),
+                _buildRuleSpecial(_t('r_dealer'), _t('r_dealer_txt')),
+                _buildRuleSpecial(_t('r_block'), _t('r_block_txt')),
+                _buildRuleSpecial(_t('r_final'), _t('r_final_txt')),
               ],
             ),
           ),
@@ -114,7 +189,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("VERSTANDEN", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+            child: Text(_t('ok'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -132,7 +207,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
     FocusScope.of(context).unfocus();
 
     if (_players.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mindestens 3 Spieler!")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t('add_err_min'))));
       return;
     }
     _setupRounds();
@@ -140,18 +215,13 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
 
   void _rematch() {
     setState(() {
-      // 1. Scores zurücksetzen
       for (var p in _players) {
         p.totalScore = 0;
       }
-
-      // 2. Spieler rotieren (Erster wird Letzter)
       if (_players.length > 1) {
         Player first = _players.removeAt(0);
         _players.add(first);
       }
-
-      // 3. Spiel neu starten
       _setupRounds();
     });
   }
@@ -164,7 +234,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
       generatedRounds.add(RoundData(
         roundNumber: i + 1,
         cardCount: maxCards - i,
-        dealerIndex: i % _players.length,
+        dealerIndex: i % _players.length, // Geber wechselt
         isLocked: i != 0,
       ));
     }
@@ -196,6 +266,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
         errorColor: errorColor,
         successColor: successColor,
         cardColor: cardColor,
+        langDict: (key) => _t(key), // Pass translation function
         onRoundCompleted: () {
           _finishRound(roundIndex);
           Navigator.pop(context);
@@ -233,12 +304,12 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
       child: Scaffold(
         backgroundColor: bgColor,
         appBar: AppBar(
-          title: Text(_gameStarted ? "Score Board" : "Fuck the Neighbor"),
+          title: Text(_gameStarted ? _t('score_board') : _t('title')),
           backgroundColor: Colors.transparent,
           elevation: 0,
           foregroundColor: primaryColor,
           actions: [
-            IconButton(icon: const Icon(Icons.help_outline), onPressed: _showRules, tooltip: "Anleitung"),
+            IconButton(icon: const Icon(Icons.help_outline), onPressed: _showRules, tooltip: _t('rules')),
           ],
         ),
         body: SafeArea(
@@ -261,13 +332,6 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
       child: Column(
         children: [
           Icon(Icons.style, size: 80, color: primaryColor),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            onPressed: _showRules,
-            icon: const Icon(Icons.menu_book),
-            label: const Text("SPIELANLEITUNG"),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
-          ),
           const SizedBox(height: 30),
           Row(
             children: [
@@ -276,10 +340,11 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                   controller: _nameController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: "Spieler Name",
+                    hintText: _t('add_hint'),
                     hintStyle: TextStyle(color: Colors.grey.shade600),
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor)),
                   ),
+                  onSubmitted: (_) => _addPlayer(),
                 ),
               ),
               IconButton(onPressed: _addPlayer, icon: Icon(Icons.add_circle, color: primaryColor, size: 40)),
@@ -307,7 +372,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
             child: ElevatedButton(
               onPressed: _startGame,
               style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
-              child: const Text("SPIEL STARTEN", style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(_t('start'), style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -317,28 +382,24 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
 
   // SCREEN 2: SCORE TABLE (Responsive Cards mit Hybrid Layout)
   Widget _buildScoreTable() {
-    // --- KONFIGURATION ---
-    const double headerWidth = 60.0; // Linke Spalte
-    const double minCardWidth = 75.0; // Mindestbreite Karte
-    const double rowHeight = 70.0;    // Höhe einer Zeile (Card + Margin)
-    const double headerHeight = 80.0; // Höhe Kopfzeile
+    const double headerWidth = 60.0;
+    const double minCardWidth = 75.0;
+    const double rowHeight = 70.0;
+    const double headerHeight = 80.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final double availableWidth = constraints.maxWidth;
-        // Padding abziehen (10 links + 10 rechts = 20)
         final double widthForContent = availableWidth - headerWidth - 20;
 
-        // 1. Berechnen: Brauchen wir Scrollen?
         double totalNeeded = _players.length * minCardWidth;
         bool needsScroll = totalNeeded > widthForContent;
 
-        // 2. Spaltenbreite festlegen
         double cardWidth;
         if (needsScroll) {
-          cardWidth = minCardWidth; // Scroll-Modus
+          cardWidth = minCardWidth;
         } else {
-          cardWidth = widthForContent / _players.length; // Stretch-Modus
+          cardWidth = widthForContent / _players.length;
         }
 
         return Padding(
@@ -346,21 +407,20 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
           child: Column(
             children: [
               Expanded(
-                // Vertikales Scrollen (Ganze Tabelle)
                 child: SingleChildScrollView(
                   scrollDirection: Axis.vertical,
                   controller: _scrollController,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // A) LINKE SPALTE (FIXIERT)
+                      // A) LINKE SPALTE
                       Column(
                         children: [
                           Container(
                             width: headerWidth,
                             height: headerHeight,
                             alignment: Alignment.center,
-                            child: Icon(Icons.grid_view, color: Colors.white12, size: 24),
+                            child: const Icon(Icons.grid_view, color: Colors.white12, size: 24),
                           ),
                           ..._rounds.asMap().entries.map((entry) {
                             RoundData round = entry.value;
@@ -380,7 +440,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text("R${round.roundNumber}",
+                                    Text("${_t('round')}${round.roundNumber}",
                                         style: TextStyle(
                                             color: isCurrent ? Colors.black : Colors.white,
                                             fontWeight: FontWeight.w900,
@@ -404,7 +464,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                         ],
                       ),
 
-                      // B) RECHTER BEREICH (Horizontal Scrollbar bei Bedarf)
+                      // B) RECHTER BEREICH
                       Expanded(
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -451,7 +511,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                                 )).toList(),
                               ),
 
-                              // 2. DATA ROWS (Die eigentlichen Spiel-Karten)
+                              // 2. DATA ROWS
                               ..._rounds.asMap().entries.map((entry) {
                                 int idx = entry.key;
                                 RoundData round = entry.value;
@@ -471,7 +531,9 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                                         int trick = round.tricks[p.name]!;
                                         int pts = round.roundPoints[p.name]!;
 
-                                        content = "$bid / $trick";
+                                        // ANPASSUNG: "Stich / Ansage"
+                                        content = "$trick / $bid";
+
                                         if (pts == 0) {
                                           textColor = successColor;
                                           cellBg = successColor.withOpacity(0.15);
@@ -533,12 +595,11 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
   // SCREEN 3: GAME OVER
   Widget _buildGameOver() {
     List<Player> sorted = List.from(_players);
-    sorted.sort((a, b) => a.totalScore.compareTo(b.totalScore));
+    sorted.sort((a, b) => a.totalScore.compareTo(b.totalScore)); // Kleinster Score gewinnt
 
     int bestScore = sorted.first.totalScore;
     List<Player> winners = sorted.where((p) => p.totalScore == bestScore).toList();
     String winnerNames = winners.map((p) => p.name).join(" & ");
-    String winnerText = winners.length > 1 ? "GEWINNER" : "GEWINNER";
 
     return SingleChildScrollView(
       child: Center(
@@ -549,7 +610,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
             children: [
               Icon(Icons.emoji_events, size: 80, color: primaryColor),
               const SizedBox(height: 20),
-              Text(winnerText, style: TextStyle(color: Colors.white.withOpacity(0.6), letterSpacing: 2)),
+              Text(_t('winner'), style: TextStyle(color: Colors.white.withOpacity(0.6), letterSpacing: 2)),
               const SizedBox(height: 5),
               Text(
                   winnerNames,
@@ -557,7 +618,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                   style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
               ),
               const SizedBox(height: 5),
-              Text("$bestScore Strafpunkte", style: TextStyle(color: primaryColor, fontSize: 20)),
+              Text("$bestScore ${_t('penalty')}", style: TextStyle(color: primaryColor, fontSize: 20)),
               const SizedBox(height: 30),
 
               ListView.builder(
@@ -566,8 +627,6 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                 itemCount: sorted.length,
                 itemBuilder: (context, index) {
                   final player = sorted[index];
-
-                  // Visuelle Rangberechnung
                   int displayRank = sorted.indexWhere((p) => p.totalScore == player.totalScore) + 1;
 
                   return Card(
@@ -593,7 +652,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                 child: ElevatedButton(
                   onPressed: _rematch,
                   style: ElevatedButton.styleFrom(backgroundColor: successColor),
-                  child: const Text("REVANCHE (Rotation)", style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Text(_t('rematch'), style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -603,7 +662,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                     _gameStarted = false;
                     _players.clear();
                   }),
-                  child: const Text("Neues Spiel (Setup)", style: TextStyle(color: Colors.grey))
+                  child: Text(_t('new_game'), style: const TextStyle(color: Colors.grey))
               )
             ],
           ),
@@ -623,6 +682,7 @@ class _RoundInputSheet extends StatefulWidget {
   final Color successColor;
   final Color cardColor;
   final VoidCallback onRoundCompleted;
+  final String Function(String) langDict; // Für Übersetzung im BottomSheet
 
   const _RoundInputSheet({
     required this.round,
@@ -632,6 +692,7 @@ class _RoundInputSheet extends StatefulWidget {
     required this.successColor,
     required this.cardColor,
     required this.onRoundCompleted,
+    required this.langDict,
   });
 
   @override
@@ -646,6 +707,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
   void initState() {
     super.initState();
     orderedPlayers = [];
+    // Startspieler ist der links vom Geber (Geber-Index + 1)
     int start = (widget.round.dealerIndex + 1) % widget.players.length;
     for (int i = 0; i < widget.players.length; i++) {
       orderedPlayers.add(widget.players[(start + i) % widget.players.length]);
@@ -671,7 +733,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
     if (total == widget.round.cardCount) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: widget.errorColor,
-        content: const Text("GEBER-REGEL: Summe darf nicht aufgehen!"),
+        content: Text(widget.langDict('err_dealer')),
       ));
       return;
     }
@@ -700,11 +762,11 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isPhase2 ? "STICHE VERTEILEN" : "ANSAGEN MACHEN",
+                      isPhase2 ? widget.langDict('phase2') : widget.langDict('phase1'),
                       style: TextStyle(color: widget.primaryColor, fontSize: 20, fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text("Runde ${widget.round.roundNumber} (${widget.round.cardCount} Karten)", style: const TextStyle(color: Colors.grey)),
+                    Text("${widget.langDict('round')} ${widget.round.roundNumber} (${widget.round.cardCount})", style: const TextStyle(color: Colors.grey)),
                   ],
                 ),
               ),
@@ -720,6 +782,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
               itemBuilder: (context, index) {
                 final player = orderedPlayers[index];
                 final isLast = index == orderedPlayers.length - 1;
+                final isFirst = index == 0;
                 final forbidden = (!isPhase2 && isLast) ? _forbiddenBid : null;
 
                 int val = isPhase2
@@ -743,9 +806,35 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(player.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                            Row(
+                              children: [
+                                Flexible(
+                                    child: Text(
+                                        player.name,
+                                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                        overflow: TextOverflow.ellipsis
+                                    )
+                                ),
+                                // ANPASSUNG: Anzeige der gemachten Ansage in Phase 2
+                                if (isPhase2) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(color: widget.primaryColor.withOpacity(0.2), shape: BoxShape.circle),
+                                    child: Text(
+                                        "${widget.round.bids[player.name]}",
+                                        style: TextStyle(color: widget.primaryColor, fontSize: 12, fontWeight: FontWeight.bold)
+                                    ),
+                                  ),
+                                ]
+                              ],
+                            ),
+                            // ANPASSUNG: Indikator wer anfängt (in Phase 1)
+                            if (isFirst && !isPhase2)
+                              Text(widget.langDict('starts'), style: TextStyle(color: widget.successColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                            // ANPASSUNG: Info für Geber
                             if (forbidden != null)
-                              Text("Nicht $forbidden!", style: TextStyle(color: widget.errorColor, fontSize: 12)),
+                              Text("${widget.langDict('forbidden')} $forbidden!", style: TextStyle(color: widget.errorColor, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -788,7 +877,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Noch zu verteilen: ", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                  Text(widget.langDict('tricks_left'), style: const TextStyle(color: Colors.grey, fontSize: 16)),
                   Text(
                     "${_remainingTricks}",
                     style: TextStyle(
@@ -821,8 +910,8 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
               ),
               child: Text(
                 isPhase2
-                    ? (_remainingTricks == 0 ? "RUNDE ABSCHLIESSEN" : "STICHE AUFGEHEN LASSEN")
-                    : "WEITER ZU DEN STICHEN",
+                    ? (_remainingTricks == 0 ? widget.langDict('btn_p2') : widget.langDict('btn_err'))
+                    : widget.langDict('btn_p1'),
                 style: TextStyle(
                     color: (isPhase2 && _remainingTricks != 0) ? Colors.grey : Colors.black,
                     fontSize: 18,
