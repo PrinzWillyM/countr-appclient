@@ -977,14 +977,17 @@ class _DartsGameState extends State<DartsGame> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(p.name, style: TextStyle(color: isTurn ? primaryColor : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                        if(p.legsWon > 0)
-                          Text("${_t('legs_label')}: ${p.legsWon}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(p.name, style: TextStyle(color: isTurn ? primaryColor : Colors.white, fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                          if(p.legsWon > 0)
+                            Text("${_t('legs_label')}: ${p.legsWon}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 10),
                     Text(
                         "${p.currentScore}",
                         style: TextStyle(

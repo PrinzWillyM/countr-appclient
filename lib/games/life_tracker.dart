@@ -453,43 +453,49 @@ class _SimpleLifeCard extends StatelessWidget {
           ),
 
           // Life
-          Spacer(),
-          Text("$life", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 80, height: 1.0)),
-          Spacer(),
+          Expanded(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text("$life", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 80, height: 1.0)),
+              ),
+            ),
+          ),
 
           // Buttons (Bottom)
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(-1),
-                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(23)),
-                  child: Container(
-                    height: 70,
-                    decoration: const BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.only(bottomLeft: Radius.circular(23)),
+          SizedBox(
+            height: 60,
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onChanged(-1),
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(23)),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(23)),
+                      ),
+                      child: const Icon(Icons.remove, color: Colors.white, size: 32),
                     ),
-                    child: const Icon(Icons.remove, color: Colors.white, size: 36),
                   ),
                 ),
-              ),
-              Container(width: 1, height: 70, color: Colors.white10),
-              Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(1),
-                  borderRadius: const BorderRadius.only(bottomRight: Radius.circular(23)),
-                  child: Container(
-                    height: 70,
-                    decoration: const BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(23)),
+                Container(width: 1, color: Colors.white10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onChanged(1),
+                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(23)),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(23)),
+                      ),
+                      child: const Icon(Icons.add, color: Colors.white, size: 32),
                     ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 36),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           )
         ],
       ),

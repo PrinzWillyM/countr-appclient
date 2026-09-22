@@ -623,68 +623,70 @@ class _MtgCard extends StatelessWidget {
           // Life
           Expanded(
             child: Center(
-              child: Text(
-                  "$life",
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 80, height: 1.0)
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                    "$life",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 80, height: 1.0)
+                ),
               ),
             ),
           ),
 
           // MTG spezifische Buttons (Bottom)
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(-5),
-                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(23)),
-                  child: Container(
-                    height: 60,
-                    decoration: const BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.only(bottomLeft: Radius.circular(23)),
+          SizedBox(
+            height: 52,
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onChanged(-5),
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(23)),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(23)),
+                      ),
+                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("-5", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
                     ),
-                    child: const Center(child: Text("-5", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold))),
                   ),
                 ),
-              ),
-              Container(width: 1, height: 60, color: Colors.white10),
-              Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(-1),
-                  child: Container(
-                    height: 60,
-                    color: Colors.black26,
-                    child: const Center(child: Text("-1", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold))),
-                  ),
-                ),
-              ),
-              Container(width: 1, height: 60, color: Colors.white10),
-              Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(1),
-                  child: Container(
-                    height: 60,
-                    color: Colors.black26,
-                    child: const Center(child: Text("+1", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold))),
-                  ),
-                ),
-              ),
-              Container(width: 1, height: 60, color: Colors.white10),
-              Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(5),
-                  borderRadius: const BorderRadius.only(bottomRight: Radius.circular(23)),
-                  child: Container(
-                    height: 60,
-                    decoration: const BoxDecoration(
+                Container(width: 1, color: Colors.white10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onChanged(-1),
+                    child: Container(
                       color: Colors.black26,
-                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(23)),
+                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("-1", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
                     ),
-                    child: const Center(child: Text("+5", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold))),
                   ),
                 ),
-              ),
-            ],
+                Container(width: 1, color: Colors.white10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onChanged(1),
+                    child: Container(
+                      color: Colors.black26,
+                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("+1", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: Colors.white10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onChanged(5),
+                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(23)),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(23)),
+                      ),
+                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("+5", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           )
         ],
       ),

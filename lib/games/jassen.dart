@@ -915,13 +915,22 @@ class _JassenGameState extends State<JassenGame> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                                _isWeisMode ? _t('weis_on') : _t('weis_off'),
-                                style: TextStyle(color: _isWeisMode ? primaryColor : Colors.grey, fontSize: 14)
+                            Flexible(
+                              child: Text(
+                                  _isWeisMode ? _t('weis_on') : _t('weis_off'),
+                                  style: TextStyle(color: _isWeisMode ? primaryColor : Colors.grey, fontSize: 14),
+                                  overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            Text(
-                              _currentInput.isEmpty ? "0" : _currentInput,
-                              style: TextStyle(color: _currentInput.isEmpty ? Colors.white24 : Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _currentInput.isEmpty ? "0" : _currentInput,
+                                  style: TextStyle(color: _currentInput.isEmpty ? Colors.white24 : Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -1067,45 +1076,51 @@ class _JassenGameState extends State<JassenGame> {
         onTap: () => _showRenameDialog(isTeam1),
         child: Container(
           color: Colors.transparent, // Nötig für Klick-Erkennung auf ganzer Fläche
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      style: TextStyle(color: primaryColor, fontSize: 22, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      child: Text(
+                        name,
+                        style: TextStyle(color: primaryColor, fontSize: 22, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.edit, color: primaryColor.withOpacity(0.5), size: 16),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text("$score", style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: () => _addStoeck(isTeam1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.diamond, size: 12, color: primaryColor.withOpacity(0.7)),
+                        const SizedBox(width: 4),
+                        Text("${_t('stoeck')} +20", style: TextStyle(color: primaryColor.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.edit, color: primaryColor.withOpacity(0.5), size: 16),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text("$score", style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () => _addStoeck(isTeam1),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.diamond, size: 12, color: primaryColor.withOpacity(0.7)),
-                      const SizedBox(width: 4),
-                      Text("${_t('stoeck')} +20", style: TextStyle(color: primaryColor.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -120,10 +120,10 @@ class DartsStatsSheet extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _statCol(avgLabel, p.average.toStringAsFixed(1)),
-                    _statCol(legsLabel, "${p.legsWon}"),
-                    _statCol(checkoutLabel, p.bestCheckout > 0 ? "${p.bestCheckout}" : "-"),
-                    _statCol(dartsLabel, "${p.dartsThrown}"),
+                    Expanded(child: _statCol(avgLabel, p.average.toStringAsFixed(1))),
+                    Expanded(child: _statCol(legsLabel, "${p.legsWon}")),
+                    Expanded(child: _statCol(checkoutLabel, p.bestCheckout > 0 ? "${p.bestCheckout}" : "-")),
+                    Expanded(child: _statCol(dartsLabel, "${p.dartsThrown}")),
                   ],
                 ),
               ],
@@ -136,10 +136,20 @@ class DartsStatsSheet extends StatelessWidget {
 
   Widget _statCol(String label, String value) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9), textAlign: TextAlign.center),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.grey, fontSize: 9),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }

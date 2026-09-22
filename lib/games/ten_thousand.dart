@@ -721,13 +721,17 @@ class _TenThousandGameState extends State<TenThousandGame> {
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(color: isTurn ? primaryColor : Colors.white10, width: isTurn ? 2 : 1),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(p.name, style: TextStyle(color: isTurn ? primaryColor : Colors.white, fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Text("${p.grandTotal}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-                  ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(p.name, style: TextStyle(color: isTurn ? primaryColor : Colors.white, fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Text("${p.grandTotal}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                    ],
+                  ),
                 ),
               );
             },

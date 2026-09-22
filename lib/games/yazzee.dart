@@ -857,22 +857,30 @@ class _YazzeeGameState extends State<YazzeeGame> {
                                       border: Border.all(color: isTurn ? primaryColor : Colors.white10, width: isTurn ? 2 : 1),
                                     ),
                                     alignment: Alignment.center,
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        if (isTurn)
-                                          Icon(Icons.play_arrow, color: primaryColor, size: 14),
-                                        Text(
-                                          p.name,
-                                          style: TextStyle(color: isTurn ? primaryColor : Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                        Text(
-                                            "${p.grandTotal}",
-                                            style: TextStyle(color: secondaryColor, fontSize: 16, fontWeight: FontWeight.bold)
-                                        )
-                                      ],
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          if (isTurn)
+                                            Icon(Icons.play_arrow, color: primaryColor, size: 14),
+                                          ConstrainedBox(
+                                            constraints: BoxConstraints(maxWidth: cardWidth - 16),
+                                            child: Text(
+                                              p.name,
+                                              style: TextStyle(color: isTurn ? primaryColor : Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                          ),
+                                          Text(
+                                              "${p.grandTotal}",
+                                              style: TextStyle(color: secondaryColor, fontSize: 16, fontWeight: FontWeight.bold)
+                                          )
+                                        ],
+                                      ),
                                     ),
                                   ),
                                   );

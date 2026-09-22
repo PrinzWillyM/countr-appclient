@@ -524,7 +524,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
   Widget _buildScoreTable() {
     const double headerWidth = 74.0;
     const double minCardWidth = 75.0;
-    const double rowHeight = 70.0;
+    const double rowHeight = 86.0;
     const double headerHeight = 80.0;
 
     return LayoutBuilder(
@@ -577,7 +577,11 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                                   color: isCurrent ? primaryColor : surfaceColor,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Column(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text("${_t('round')}${round.roundNumber}",
@@ -607,10 +611,12 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                                       message: "${_t('shuffles')}: ${_dealerName(round)}",
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(Icons.shuffle, size: 9, color: isCurrent ? Colors.black54 : Colors.white24),
                                           const SizedBox(width: 2),
-                                          Flexible(
+                                          ConstrainedBox(
+                                            constraints: const BoxConstraints(maxWidth: 50),
                                             child: Text(_dealerName(round),
                                                 overflow: TextOverflow.ellipsis,
                                                 maxLines: 1,
@@ -627,6 +633,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                                     if(round.isCompleted)
                                       Icon(Icons.check, size: 12, color: successColor)
                                   ],
+                                  ),
                                 ),
                               ),
                             );

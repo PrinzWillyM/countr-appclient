@@ -471,12 +471,16 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: primaryColor.withOpacity(0.5)),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(_t('turn'), style: const TextStyle(color: Colors.white54, fontSize: 9)),
-                        Text("$turnCounter", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                      ],
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_t('turn'), style: const TextStyle(color: Colors.white54, fontSize: 9)),
+                          Text("$turnCounter", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
                     ),
                   ),
                   Container(width: 2, height: 40, color: Colors.white12),
