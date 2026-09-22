@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 class StandardCounterGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const StandardCounterGame({super.key, this.themeColor});
+  const StandardCounterGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<StandardCounterGame> createState() => _StandardCounterGameState();
 }
 
 class _StandardCounterGameState extends State<StandardCounterGame> {
+  static const String gameId = 'game_title_std';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFF4CBF98);
   final Color bgColor = const Color(0xFF222629);
@@ -22,6 +26,25 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
   List<Map<String, dynamic>> players = [];
   final TextEditingController _renameController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resume) _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    final savedPlayers = (saved['players'] as List<dynamic>?) ?? [];
+    setState(() {
+      players = savedPlayers.map((p) => Map<String, dynamic>.from(p as Map)).toList();
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {'players': players});
+  }
 
   // Sprache: immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
   String get _currentLang => appLocaleNotifier.value.languageCode;
@@ -157,6 +180,7 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
         'score': 0,
       });
     });
+    _persist();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -173,6 +197,7 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
     setState(() {
       players[index]['score'] += amount;
     });
+    _persist();
   }
 
   void _showRenameDialog(int index) {
@@ -218,6 +243,7 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
       setState(() {
         players[index]['name'] = _renameController.text.trim();
       });
+      _persist();
     }
   }
 
@@ -254,6 +280,7 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
                   p['score'] = 0;
                 }
               });
+              _persist();
               Navigator.pop(context);
             },
             child: Text(_t('reset_confirm'), style: TextStyle(color: errorColor, fontWeight: FontWeight.bold)),
@@ -378,6 +405,7 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
         setState(() {
           players.removeAt(index);
         });
+        _persist();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),

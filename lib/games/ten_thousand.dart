@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 enum TenKInputMode { dice, manual }
 
@@ -65,13 +66,16 @@ class TenKPlayer {
 
 class TenThousandGame extends StatefulWidget {
   final Color? themeColor;
-  const TenThousandGame({super.key, this.themeColor});
+  final bool resume;
+  const TenThousandGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<TenThousandGame> createState() => _TenThousandGameState();
 }
 
 class _TenThousandGameState extends State<TenThousandGame> {
+  static const String gameId = 'game_title_10k';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFFF9F43);
   final Color bgColor = const Color(0xFF222629);
@@ -105,6 +109,66 @@ class _TenThousandGameState extends State<TenThousandGame> {
   bool _hasRolledThisTurn = false;
   bool _bustedThisRoll = false;
   final Random _rng = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resume) _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    setState(() {
+      _gameStarted = saved['gameStarted'] as bool? ?? false;
+      _gameFinished = saved['gameFinished'] as bool? ?? false;
+      final savedPlayers = (saved['players'] as List<dynamic>?) ?? [];
+      _players = savedPlayers.map((p) {
+        final map = Map<String, dynamic>.from(p as Map);
+        final player = TenKPlayer(map['name'] as String);
+        player.grandTotal = map['grandTotal'] as int? ?? 0;
+        player.isOnBoard = map['isOnBoard'] as bool? ?? false;
+        return player;
+      }).toList();
+      _targetScore = saved['targetScore'] as int? ?? _targetScore;
+      final modeName = saved['inputMode'] as String?;
+      _inputMode = modeName == null
+          ? _inputMode
+          : TenKInputMode.values.firstWhere((m) => m.name == modeName, orElse: () => TenKInputMode.dice);
+      _currentPlayerIndex = saved['currentPlayerIndex'] as int? ?? 0;
+      _turnTotal = saved['turnTotal'] as int? ?? 0;
+      _finalRoundTriggered = saved['finalRoundTriggered'] as bool? ?? false;
+      _finalRoundTriggerIndex = saved['finalRoundTriggerIndex'] as int?;
+      _turnsLeftInFinalRound = saved['turnsLeftInFinalRound'] as int? ?? 0;
+      _currentRoll = List<int>.from((saved['currentRoll'] as List<dynamic>?) ?? []);
+      _diceToRoll = saved['diceToRoll'] as int? ?? 6;
+      _hasRolledThisTurn = saved['hasRolledThisTurn'] as bool? ?? false;
+      _bustedThisRoll = saved['bustedThisRoll'] as bool? ?? false;
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'gameStarted': _gameStarted,
+      'gameFinished': _gameFinished,
+      'players': _players.map((p) => {
+            'name': p.name,
+            'grandTotal': p.grandTotal,
+            'isOnBoard': p.isOnBoard,
+          }).toList(),
+      'targetScore': _targetScore,
+      'inputMode': _inputMode.name,
+      'currentPlayerIndex': _currentPlayerIndex,
+      'turnTotal': _turnTotal,
+      'finalRoundTriggered': _finalRoundTriggered,
+      'finalRoundTriggerIndex': _finalRoundTriggerIndex,
+      'turnsLeftInFinalRound': _turnsLeftInFinalRound,
+      'currentRoll': _currentRoll,
+      'diceToRoll': _diceToRoll,
+      'hasRolledThisTurn': _hasRolledThisTurn,
+      'bustedThisRoll': _bustedThisRoll,
+    });
+  }
 
   // --- ÜBERSETZUNG ---
   String _t(String key) {
@@ -327,6 +391,7 @@ class _TenThousandGameState extends State<TenThousandGame> {
         _players.add(TenKPlayer(_nameController.text.trim()));
         _nameController.clear();
       });
+      _persist();
     }
   }
 
@@ -349,6 +414,7 @@ class _TenThousandGameState extends State<TenThousandGame> {
       _turnsLeftInFinalRound = 0;
       _resetTurn();
     });
+    _persist();
   }
 
   void _resetGame() {
@@ -357,6 +423,7 @@ class _TenThousandGameState extends State<TenThousandGame> {
       _gameFinished = false;
       _players.clear();
     });
+    GamePersistence.clear(gameId);
   }
 
   void _resetTurn() {
@@ -410,6 +477,7 @@ class _TenThousandGameState extends State<TenThousandGame> {
       _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
       _resetTurn();
     });
+    _persist();
   }
 
   // --- WÜRFEL-MODUS ---
@@ -433,6 +501,7 @@ class _TenThousandGameState extends State<TenThousandGame> {
       int remaining = _diceToRoll - result.usedCount;
       _diceToRoll = remaining == 0 ? 6 : remaining;
     });
+    _persist();
 
     if (result.isFarkle) {
       Future.delayed(const Duration(milliseconds: 900), () {
@@ -451,6 +520,7 @@ class _TenThousandGameState extends State<TenThousandGame> {
       _turnTotal += val;
       _manualInputController.clear();
     });
+    _persist();
   }
 
   void _showRules() {
@@ -533,7 +603,10 @@ class _TenThousandGameState extends State<TenThousandGame> {
                   child: ListTile(
                     leading: CircleAvatar(backgroundColor: Colors.black26, child: Text("${index + 1}", style: const TextStyle(color: Colors.white))),
                     title: Text(_players[index].name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    trailing: IconButton(icon: Icon(Icons.close, color: errorColor), onPressed: () => setState(() => _players.removeAt(index))),
+                    trailing: IconButton(icon: Icon(Icons.close, color: errorColor), onPressed: () {
+                      setState(() => _players.removeAt(index));
+                      _persist();
+                    }),
                   ),
                 ),
               ),
@@ -553,7 +626,10 @@ class _TenThousandGameState extends State<TenThousandGame> {
                   selected: selected,
                   selectedColor: primaryColor,
                   backgroundColor: surfaceColor,
-                  onSelected: (_) => setState(() => _targetScore = val),
+                  onSelected: (_) {
+                    setState(() => _targetScore = val);
+                    _persist();
+                  },
                 ),
               );
             }).toList(),
@@ -588,7 +664,10 @@ class _TenThousandGameState extends State<TenThousandGame> {
   Widget _modeChip(String label, IconData icon, TenKInputMode mode) {
     bool selected = _inputMode == mode;
     return GestureDetector(
-      onTap: () => setState(() => _inputMode = mode),
+      onTap: () {
+        setState(() => _inputMode = mode);
+        _persist();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         alignment: Alignment.center,

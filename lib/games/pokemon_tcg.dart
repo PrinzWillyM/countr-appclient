@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 // --- DATA MODELS ---
 enum SpecialCondition { none, asleep, paralyzed, confused }
@@ -11,6 +12,8 @@ class PokeSlot {
   bool isPoisoned = false;
   bool isBurned = false;
   SpecialCondition condition = SpecialCondition.none;
+
+  PokeSlot();
 
   void applyToken(String token) {
     if (token == '10') damage += 10;
@@ -31,6 +34,25 @@ class PokeSlot {
     isBurned = false;
     condition = SpecialCondition.none;
   }
+
+  Map<String, dynamic> toJson() => {
+        'damage': damage,
+        'isPoisoned': isPoisoned,
+        'isBurned': isBurned,
+        'condition': condition.name,
+      };
+
+  factory PokeSlot.fromJson(Map<String, dynamic> json) {
+    final slot = PokeSlot();
+    slot.damage = json['damage'] as int? ?? 0;
+    slot.isPoisoned = json['isPoisoned'] as bool? ?? false;
+    slot.isBurned = json['isBurned'] as bool? ?? false;
+    slot.condition = SpecialCondition.values.firstWhere(
+      (c) => c.name == json['condition'],
+      orElse: () => SpecialCondition.none,
+    );
+    return slot;
+  }
 }
 
 class PokePlayer {
@@ -49,19 +71,47 @@ class PokePlayer {
     supporterUsed = false;
     retreatUsed = false;
   }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'prizes': prizes,
+        'gxUsed': gxUsed,
+        'vstarUsed': vstarUsed,
+        'supporterUsed': supporterUsed,
+        'retreatUsed': retreatUsed,
+        'active': active.toJson(),
+        'bench': bench.map((s) => s.toJson()).toList(),
+      };
+
+  factory PokePlayer.fromJson(Map<String, dynamic> json) {
+    final player = PokePlayer(json['name'] as String);
+    player.prizes = json['prizes'] as int? ?? 6;
+    player.gxUsed = json['gxUsed'] as bool? ?? false;
+    player.vstarUsed = json['vstarUsed'] as bool? ?? false;
+    player.supporterUsed = json['supporterUsed'] as bool? ?? false;
+    player.retreatUsed = json['retreatUsed'] as bool? ?? false;
+    player.active = PokeSlot.fromJson(Map<String, dynamic>.from(json['active'] as Map));
+    player.bench = (json['bench'] as List<dynamic>)
+        .map((s) => PokeSlot.fromJson(Map<String, dynamic>.from(s as Map)))
+        .toList();
+    return player;
+  }
 }
 
 // --- WIDGET ---
 class PokemonTCGGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const PokemonTCGGame({super.key, this.themeColor});
+  const PokemonTCGGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<PokemonTCGGame> createState() => _PokemonTCGGameState();
 }
 
 class _PokemonTCGGameState extends State<PokemonTCGGame> {
+  static const String gameId = 'game_title_pkm';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Pokemon Gelb
   final Color bgColor = const Color(0xFF222629);
@@ -85,7 +135,32 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
   @override
   void initState() {
     super.initState();
-    _resetGame();
+    if (widget.resume) {
+      _loadSavedState();
+    } else {
+      _resetGame();
+    }
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) {
+      _resetGame();
+      return;
+    }
+    setState(() {
+      player1 = PokePlayer.fromJson(Map<String, dynamic>.from(saved['player1'] as Map));
+      player2 = PokePlayer.fromJson(Map<String, dynamic>.from(saved['player2'] as Map));
+      turnCounter = saved['turnCounter'] as int? ?? 1;
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'player1': player1.toJson(),
+      'player2': player2.toJson(),
+      'turnCounter': turnCounter,
+    });
   }
 
   void _resetGame() {
@@ -94,6 +169,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
       player2 = PokePlayer(_t('opponent'));
       turnCounter = 1;
     });
+    _persist();
   }
 
   // --- TRANSLATIONS ---
@@ -164,6 +240,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
           ),
           onSubmitted: (_) {
             setState(() => player.name = _renameController.text.trim());
+            _persist();
             Navigator.pop(context);
           },
         ),
@@ -172,6 +249,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
           TextButton(
             onPressed: () {
               setState(() => player.name = _renameController.text.trim());
+              _persist();
               Navigator.pop(context);
             },
             child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
@@ -200,6 +278,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                   setState(() {
                     if (player.prizes > 0) player.prizes--;
                   });
+                  _persist();
                   Navigator.pop(context);
                   if(player.prizes == 0) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${player.name} gewinnt!"), backgroundColor: primaryColor));
@@ -217,6 +296,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                   setState(() {
                     if (player.prizes < 6) player.prizes++;
                   });
+                  _persist();
                   Navigator.pop(context);
                 },
               ),
@@ -277,14 +357,14 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _editBtn("-50", () => updateState(() => slot.damage = max(0, slot.damage - 50))),
-                      _editBtn("-10", () => updateState(() => slot.damage = max(0, slot.damage - 10))),
+                      _editBtn("-50", () { updateState(() => slot.damage = max(0, slot.damage - 50)); _persist(); }),
+                      _editBtn("-10", () { updateState(() => slot.damage = max(0, slot.damage - 10)); _persist(); }),
                       SizedBox(
                           width: 80,
                           child: Text("${slot.damage}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold))
                       ),
-                      _editBtn("+10", () => updateState(() => slot.damage += 10)),
-                      _editBtn("+50", () => updateState(() => slot.damage += 50)),
+                      _editBtn("+10", () { updateState(() => slot.damage += 10); _persist(); }),
+                      _editBtn("+50", () { updateState(() => slot.damage += 50); _persist(); }),
                     ],
                   ),
 
@@ -297,6 +377,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             updateState(() => slot.clearAll());
+                            _persist();
                             Navigator.pop(context);
                           },
                           icon: const Icon(Icons.delete),
@@ -315,6 +396,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                                 player.active = player.bench[benchIndex];
                                 player.bench[benchIndex] = temp;
                               });
+                              _persist();
                               Navigator.pop(context);
                             },
                             icon: const Icon(Icons.swap_vert),
@@ -492,6 +574,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   setState(() => player.gxUsed = !player.gxUsed);
+                  _persist();
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -509,6 +592,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   setState(() => player.vstarUsed = !player.vstarUsed);
+                  _persist();
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -562,6 +646,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => player.supporterUsed = !player.supporterUsed);
+              _persist();
             },
             child: Container(
               width: double.infinity,
@@ -587,6 +672,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => player.retreatUsed = !player.retreatUsed);
+              _persist();
             },
             child: Container(
               width: double.infinity,
@@ -614,6 +700,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
               player.endTurn();
               turnCounter++;
             });
+            _persist();
           },
           child: Container(
             width: double.infinity,
@@ -655,6 +742,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
       onAccept: (data) {
         HapticFeedback.heavyImpact();
         setState(() => slot.applyToken(data));
+        _persist();
       },
       builder: (context, candidateData, rejectedData) {
         bool isHovered = candidateData.isNotEmpty;

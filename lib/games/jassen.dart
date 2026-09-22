@@ -2,20 +2,24 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 // --- ENUMS ---
 enum JassMode { schieber, differenzler }
 
 class JassenGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const JassenGame({super.key, this.themeColor});
+  const JassenGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<JassenGame> createState() => _JassenGameState();
 }
 
 class _JassenGameState extends State<JassenGame> {
+  static const String gameId = 'game_title_jass';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Brand Yellow
   final Color bgColor = const Color(0xFF222629);
@@ -55,6 +59,75 @@ class _JassenGameState extends State<JassenGame> {
     // Standardnamen für Teams basierend auf der aktuellen Sprache
     team1Name = _t('team1');
     team2Name = _t('team2');
+    if (widget.resume) _loadSavedState();
+  }
+
+  Map<String, Map<String, int>> _decodeRoundBuffer(dynamic raw) {
+    final map = Map<String, dynamic>.from((raw as Map?) ?? {});
+    return map.map((k, v) => MapEntry(k, Map<String, int>.from(v as Map)));
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    setState(() {
+      final modeName = saved['selectedMode'] as String?;
+      _selectedMode = modeName == null
+          ? null
+          : JassMode.values.firstWhere((m) => m.name == modeName);
+
+      // Schieber
+      team1Score = saved['team1Score'] as int? ?? 0;
+      team2Score = saved['team2Score'] as int? ?? 0;
+      team1Name = saved['team1Name'] as String? ?? team1Name;
+      team2Name = saved['team2Name'] as String? ?? team2Name;
+      history = ((saved['history'] as List<dynamic>?) ?? [])
+          .map((h) => Map<String, dynamic>.from(h as Map))
+          .toList();
+      _isWeisMode = saved['isWeisMode'] as bool? ?? false;
+      _multiplier = saved['multiplier'] as int? ?? 1;
+      _matchTarget = saved['matchTarget'] as int?;
+      _schieberFinished = saved['schieberFinished'] as bool? ?? false;
+
+      // Differenzler
+      _diffGameStarted = saved['diffGameStarted'] as bool? ?? false;
+      _diffGameFinished = saved['diffGameFinished'] as bool? ?? false;
+      diffPlayers = ((saved['diffPlayers'] as List<dynamic>?) ?? [])
+          .map((p) => Map<String, dynamic>.from(p as Map))
+          .toList();
+      _diffCurrentRound = saved['diffCurrentRound'] as int? ?? 1;
+      _diffRoundLimit = saved['diffRoundLimit'] as int?;
+      _diffRoundBuffer = _decodeRoundBuffer(saved['diffRoundBuffer']);
+      diffRoundLog = ((saved['diffRoundLog'] as List<dynamic>?) ?? []).map((r) {
+        final m = Map<String, dynamic>.from(r as Map);
+        return {
+          'round': m['round'] as int,
+          'entries': _decodeRoundBuffer(m['entries']),
+        };
+      }).toList();
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'selectedMode': _selectedMode?.name,
+      'team1Score': team1Score,
+      'team2Score': team2Score,
+      'team1Name': team1Name,
+      'team2Name': team2Name,
+      'history': history,
+      'isWeisMode': _isWeisMode,
+      'multiplier': _multiplier,
+      'matchTarget': _matchTarget,
+      'schieberFinished': _schieberFinished,
+      'diffGameStarted': _diffGameStarted,
+      'diffGameFinished': _diffGameFinished,
+      'diffPlayers': diffPlayers,
+      'diffCurrentRound': _diffCurrentRound,
+      'diffRoundLimit': _diffRoundLimit,
+      'diffRoundBuffer': _diffRoundBuffer,
+      'diffRoundLog': diffRoundLog,
+    });
   }
 
   // --- TRANSLATIONS ---
@@ -430,6 +503,7 @@ class _JassenGameState extends State<JassenGame> {
       _multiplier = 1;
       _checkMatchOver();
     });
+    _persist();
   }
 
   // Stöck: 20 Punkte direkt und unmultipliziert für ein Team.
@@ -443,6 +517,7 @@ class _JassenGameState extends State<JassenGame> {
       history.add({'t1': t1Add, 't2': t2Add, 'type': 'stoeck', 'multiplier': 1});
       _checkMatchOver();
     });
+    _persist();
   }
 
   void _checkMatchOver() {
@@ -460,6 +535,7 @@ class _JassenGameState extends State<JassenGame> {
         team2Score -= last['t2'] as int;
         _schieberFinished = false;
       });
+      _persist();
     }
   }
 
@@ -558,6 +634,7 @@ class _JassenGameState extends State<JassenGame> {
               if (isTeam1) team1Name = _nameController.text.trim();
               else team2Name = _nameController.text.trim();
             });
+            _persist();
             Navigator.pop(context);
           },
         ),
@@ -572,6 +649,7 @@ class _JassenGameState extends State<JassenGame> {
                 if (isTeam1) team1Name = _nameController.text.trim();
                 else team2Name = _nameController.text.trim();
               });
+              _persist();
               Navigator.pop(context);
             },
             child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
@@ -593,6 +671,7 @@ class _JassenGameState extends State<JassenGame> {
         });
         _nameController.clear();
       });
+      _persist();
     }
   }
 
@@ -605,6 +684,7 @@ class _JassenGameState extends State<JassenGame> {
       _diffRoundBuffer = {};
       diffRoundLog = [];
     });
+    _persist();
   }
 
   void _submitDiffScore(int index, int madePoints) {
@@ -613,6 +693,7 @@ class _JassenGameState extends State<JassenGame> {
       setState(() {
         p['current_target'] = madePoints;
       });
+      _persist();
     } else {
       int target = p['current_target'];
       int diff = (target - madePoints).abs();
@@ -636,10 +717,12 @@ class _JassenGameState extends State<JassenGame> {
           }
         }
       });
+      _persist();
     }
   }
 
   void _resetDiffGame() {
+    GamePersistence.clear(gameId);
     setState(() {
       _diffGameStarted = false;
       _diffGameFinished = false;
@@ -665,14 +748,17 @@ class _JassenGameState extends State<JassenGame> {
           if (_selectedMode == JassMode.schieber && history.isNotEmpty)
             IconButton(icon: const Icon(Icons.history), onPressed: _showHistorySheet, tooltip: _t('history')),
           if (_selectedMode != null)
-            IconButton(icon: const Icon(Icons.refresh), onPressed: () => setState(() {
-              _selectedMode = null;
-              team1Score = 0; team2Score = 0; history.clear();
-              _isWeisMode = false; _multiplier = 1; _matchTarget = null; _schieberFinished = false;
-              diffPlayers.clear();
-              _diffGameStarted = false; _diffGameFinished = false;
-              _diffCurrentRound = 1; _diffRoundBuffer = {}; diffRoundLog = []; _diffRoundLimit = null;
-            })),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: () {
+              GamePersistence.clear(gameId);
+              setState(() {
+                _selectedMode = null;
+                team1Score = 0; team2Score = 0; history.clear();
+                _isWeisMode = false; _multiplier = 1; _matchTarget = null; _schieberFinished = false;
+                diffPlayers.clear();
+                _diffGameStarted = false; _diffGameFinished = false;
+                _diffCurrentRound = 1; _diffRoundBuffer = {}; diffRoundLog = []; _diffRoundLimit = null;
+              });
+            }),
           IconButton(icon: const Icon(Icons.help_outline), onPressed: _showRules),
         ],
       ),
@@ -719,7 +805,10 @@ class _JassenGameState extends State<JassenGame> {
         leading: Icon(icon, color: primaryColor, size: 40),
         title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
         subtitle: Text(desc, style: const TextStyle(color: Colors.white54)),
-        onTap: () => setState(() => _selectedMode = mode),
+        onTap: () {
+          setState(() => _selectedMode = mode);
+          _persist();
+        },
       ),
     );
   }
@@ -923,6 +1012,7 @@ class _JassenGameState extends State<JassenGame> {
                   _matchTarget = val;
                   _checkMatchOver();
                 });
+                _persist();
                 Navigator.pop(context);
               },
             );
@@ -955,6 +1045,7 @@ class _JassenGameState extends State<JassenGame> {
               height: 60,
               child: ElevatedButton(
                 onPressed: () {
+                  GamePersistence.clear(gameId);
                   setState(() {
                     team1Score = 0; team2Score = 0; history.clear();
                     _schieberFinished = false;
@@ -1155,7 +1246,10 @@ class _JassenGameState extends State<JassenGame> {
                       selected: selected,
                       selectedColor: primaryColor,
                       backgroundColor: surfaceColor,
-                      onSelected: (_) => setState(() => _diffRoundLimit = val),
+                      onSelected: (_) {
+                        setState(() => _diffRoundLimit = val);
+                        _persist();
+                      },
                     );
                   }).toList(),
                 ),

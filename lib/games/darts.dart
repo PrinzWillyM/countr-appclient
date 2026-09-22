@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'darts_more.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 // --- DATEN-MODELLE ---
 class DartPlayer {
@@ -21,19 +22,42 @@ class DartPlayer {
       : currentScore = startScore,
         legsWon = 0,
         history = [];
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'currentScore': currentScore,
+        'legsWon': legsWon,
+        'history': history,
+        'dartsThrown': dartsThrown,
+        'totalScored': totalScored,
+        'bestCheckout': bestCheckout,
+      };
+
+  factory DartPlayer.fromJson(Map<String, dynamic> json) {
+    final player = DartPlayer(name: json['name'] as String, startScore: json['currentScore'] as int);
+    player.legsWon = json['legsWon'] as int? ?? 0;
+    player.history = List<int>.from((json['history'] as List<dynamic>? ?? []).map((e) => e as int));
+    player.dartsThrown = json['dartsThrown'] as int? ?? 0;
+    player.totalScored = json['totalScored'] as int? ?? 0;
+    player.bestCheckout = json['bestCheckout'] as int? ?? 0;
+    return player;
+  }
 }
 
 class DartsGame extends StatefulWidget {
   // Hier nehmen wir die Farbe aus der Main.dart entgegen
   final Color? themeColor;
+  final bool resume;
 
-  const DartsGame({super.key, this.themeColor});
+  const DartsGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<DartsGame> createState() => _DartsGameState();
 }
 
 class _DartsGameState extends State<DartsGame> {
+  static const String gameId = 'game_title_darts';
+
   // --- STYLE ---
   // Getter: Nutze die übergebene Farbe, oder Fallback auf Dart-Grün
   Color get primaryColor => widget.themeColor ?? const Color(0xFF00B894);
@@ -60,6 +84,40 @@ class _DartsGameState extends State<DartsGame> {
 
   final TextEditingController _nameController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resume) _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    setState(() {
+      _gameStarted = saved['gameStarted'] as bool? ?? false;
+      _startScore = saved['startScore'] as int? ?? _startScore;
+      _currentPlayerIndex = saved['currentPlayerIndex'] as int? ?? 0;
+      _bestOf = saved['bestOf'] as int? ?? _bestOf;
+      _doubleOutEnabled = saved['doubleOutEnabled'] as bool? ?? _doubleOutEnabled;
+      _currentInput = saved['currentInput'] as String? ?? "";
+      _players = ((saved['players'] as List<dynamic>?) ?? [])
+          .map((p) => DartPlayer.fromJson(Map<String, dynamic>.from(p as Map)))
+          .toList();
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'gameStarted': _gameStarted,
+      'startScore': _startScore,
+      'currentPlayerIndex': _currentPlayerIndex,
+      'bestOf': _bestOf,
+      'doubleOutEnabled': _doubleOutEnabled,
+      'currentInput': _currentInput,
+      'players': _players.map((p) => p.toJson()).toList(),
+    });
+  }
 
   // --- ÜBERSETZUNG ---
   String _t(String key) {
@@ -462,6 +520,7 @@ class _DartsGameState extends State<DartsGame> {
         _players.add(DartPlayer(name: _nameController.text.trim(), startScore: _startScore));
         _nameController.clear();
       });
+      _persist();
     }
   }
 
@@ -485,6 +544,7 @@ class _DartsGameState extends State<DartsGame> {
       _currentPlayerIndex = 0;
       _currentInput = "";
     });
+    _persist();
   }
 
   void _showStats() {
@@ -562,6 +622,7 @@ class _DartsGameState extends State<DartsGame> {
         setState(() {
           _currentInput = _currentInput.substring(0, _currentInput.length - 1);
         });
+        _persist();
       }
     } else {
       // Zahlen eingeben (max 3 Stellen, da 180 das Maximum ist)
@@ -569,6 +630,7 @@ class _DartsGameState extends State<DartsGame> {
         setState(() {
           _currentInput += value;
         });
+        _persist();
       }
     }
   }
@@ -642,6 +704,7 @@ class _DartsGameState extends State<DartsGame> {
         _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
       }
     });
+    _persist();
 
     if (newScore == 0 && !isBust) {
       _showWinnerDialog(player);
@@ -687,6 +750,7 @@ class _DartsGameState extends State<DartsGame> {
                   }
                   _currentPlayerIndex = 0;
                 });
+                _persist();
               },
               child: Text(_t('new_round'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
             ),
@@ -705,6 +769,7 @@ class _DartsGameState extends State<DartsGame> {
                   }
                   _currentPlayerIndex = 0;
                 });
+                _persist();
               },
               child: Text(_t('rematch'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
             ),
@@ -715,6 +780,7 @@ class _DartsGameState extends State<DartsGame> {
                 _gameStarted = false; // Zurück zum Setup
                 _players.clear();
               });
+              GamePersistence.clear(gameId);
             },
             child: Text(_t('finish'), style: const TextStyle(color: Colors.grey)),
           ),
@@ -775,7 +841,10 @@ class _DartsGameState extends State<DartsGame> {
                   selectedColor: primaryColor,
                   backgroundColor: surfaceColor,
                   checkmarkColor: Colors.black,
-                  onSelected: (val) => setState(() => _startScore = score),
+                  onSelected: (val) {
+                    setState(() => _startScore = score);
+                    _persist();
+                  },
                 ),
               );
             }).toList(),
@@ -796,7 +865,10 @@ class _DartsGameState extends State<DartsGame> {
                   selectedColor: primaryColor,
                   backgroundColor: surfaceColor,
                   checkmarkColor: Colors.black,
-                  onSelected: (val) => setState(() => _bestOf = bo),
+                  onSelected: (val) {
+                    setState(() => _bestOf = bo);
+                    _persist();
+                  },
                 ),
               );
             }).toList(),
@@ -812,7 +884,10 @@ class _DartsGameState extends State<DartsGame> {
               title: Text(_t('double_out'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               subtitle: Text(_t('double_out_desc'), style: const TextStyle(color: Colors.grey, fontSize: 12)),
               value: _doubleOutEnabled,
-              onChanged: (val) => setState(() => _doubleOutEnabled = val),
+              onChanged: (val) {
+                setState(() => _doubleOutEnabled = val);
+                _persist();
+              },
             ),
           ),
 
@@ -851,7 +926,10 @@ class _DartsGameState extends State<DartsGame> {
                     title: Text(_players[index].name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     trailing: IconButton(
                       icon: Icon(Icons.close, color: errorColor),
-                      onPressed: () => setState(() => _players.removeAt(index)),
+                      onPressed: () {
+                        setState(() => _players.removeAt(index));
+                        _persist();
+                      },
                     ),
                   ),
                 ),

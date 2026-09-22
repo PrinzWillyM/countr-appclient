@@ -2,17 +2,21 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 class LifeTrackerGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const LifeTrackerGame({super.key, this.themeColor});
+  const LifeTrackerGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<LifeTrackerGame> createState() => _LifeTrackerGameState();
 }
 
 class _LifeTrackerGameState extends State<LifeTrackerGame> {
+  static const String gameId = 'game_title_life';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Brand Yellow
   final Color bgColor = const Color(0xFF222629);
@@ -33,7 +37,34 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
   @override
   void initState() {
     super.initState();
-    _resetGame();
+    if (widget.resume) {
+      _loadSavedState();
+    } else {
+      _resetGame();
+    }
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) {
+      _resetGame();
+      return;
+    }
+    setState(() {
+      playerCount = saved['playerCount'] as int? ?? playerCount;
+      startLife = saved['startLife'] as int? ?? startLife;
+      final savedPlayers = (saved['players'] as List<dynamic>?) ?? [];
+      players = savedPlayers.map((p) => Map<String, dynamic>.from(p as Map)).toList();
+      _activeMenu = 0;
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'playerCount': playerCount,
+      'startLife': startLife,
+      'players': players,
+    });
   }
 
   // --- ÜBERSETZUNG ---
@@ -90,6 +121,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
       });
       _activeMenu = 0; // Menü schließen beim Reset
     });
+    _persist();
   }
 
   void _updateLife(int index, int amount) {
@@ -98,6 +130,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
       players[index]['life'] += amount;
       _activeMenu = 0; // Schließt das Menü, falls man anfängt zu tippen
     });
+    _persist();
   }
 
   void _showRenameDialog(int index) {
@@ -127,6 +160,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
               setState(() {
                 players[index]['name'] = _renameController.text.trim();
               });
+              _persist();
               Navigator.pop(context);
             },
             child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),

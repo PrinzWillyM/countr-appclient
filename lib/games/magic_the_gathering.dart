@@ -2,17 +2,21 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 class MagicTheGatheringGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const MagicTheGatheringGame({super.key, this.themeColor});
+  const MagicTheGatheringGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<MagicTheGatheringGame> createState() => _MagicTheGatheringGameState();
 }
 
 class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
+  static const String gameId = 'game_title_mtg';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Brand Yellow
   final Color bgColor = const Color(0xFF222629);
@@ -33,7 +37,38 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
   @override
   void initState() {
     super.initState();
-    _resetGame();
+    if (widget.resume) {
+      _loadSavedState();
+    } else {
+      _resetGame();
+    }
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) {
+      _resetGame();
+      return;
+    }
+    setState(() {
+      playerCount = saved['playerCount'] as int? ?? playerCount;
+      startLife = saved['startLife'] as int? ?? startLife;
+      final savedPlayers = (saved['players'] as List<dynamic>?) ?? [];
+      players = savedPlayers.map((p) {
+        final map = Map<String, dynamic>.from(p as Map);
+        map['cmdDamage'] = List<int>.from((map['cmdDamage'] as List).map((e) => e as int));
+        return map;
+      }).toList();
+      _activeMenu = 0;
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'playerCount': playerCount,
+      'startLife': startLife,
+      'players': players,
+    });
   }
 
   // --- ÜBERSETZUNG ---
@@ -92,6 +127,7 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
       });
       _activeMenu = 0;
     });
+    _persist();
   }
 
   void _updateLife(int index, int amount) {
@@ -100,6 +136,7 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
       players[index]['life'] += amount;
       _activeMenu = 0;
     });
+    _persist();
   }
 
   void _updateCommanderDamage(int playerIndex, int fromOpponentIndex, int amount) {
@@ -112,6 +149,7 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
       // Commander-Schaden reduziert auch das reguläre Leben
       players[playerIndex]['life'] -= amount;
     });
+    _persist();
   }
 
   void _showRenameDialog(int index) {
@@ -141,6 +179,7 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
               setState(() {
                 players[index]['name'] = _renameController.text.trim();
               });
+              _persist();
               Navigator.pop(context);
             },
             child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),

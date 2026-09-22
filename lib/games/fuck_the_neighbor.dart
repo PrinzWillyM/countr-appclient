@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 // --- DATENSTRUKTUREN ---
 
@@ -9,6 +10,13 @@ class Player {
   int totalScore;
 
   Player({required this.name, this.totalScore = 0});
+
+  Map<String, dynamic> toJson() => {'name': name, 'totalScore': totalScore};
+
+  factory Player.fromJson(Map<String, dynamic> json) => Player(
+        name: json['name'] as String,
+        totalScore: json['totalScore'] as int,
+      );
 }
 
 class RoundData {
@@ -29,20 +37,48 @@ class RoundData {
     this.isCompleted = false,
     this.isLocked = true,
   }) : bids = {}, tricks = {}, roundPoints = {};
+
+  Map<String, dynamic> toJson() => {
+        'roundNumber': roundNumber,
+        'cardCount': cardCount,
+        'dealerIndex': dealerIndex,
+        'isCompleted': isCompleted,
+        'isLocked': isLocked,
+        'bids': bids,
+        'tricks': tricks,
+        'roundPoints': roundPoints,
+      };
+
+  factory RoundData.fromJson(Map<String, dynamic> json) {
+    final round = RoundData(
+      roundNumber: json['roundNumber'] as int,
+      cardCount: json['cardCount'] as int,
+      dealerIndex: json['dealerIndex'] as int,
+      isCompleted: json['isCompleted'] as bool,
+      isLocked: json['isLocked'] as bool,
+    );
+    round.bids = Map<String, int>.from(json['bids'] as Map);
+    round.tricks = Map<String, int>.from(json['tricks'] as Map);
+    round.roundPoints = Map<String, int>.from(json['roundPoints'] as Map);
+    return round;
+  }
 }
 
 // --- WIDGET ---
 
 class FuckTheNeighborGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const FuckTheNeighborGame({super.key, this.themeColor});
+  const FuckTheNeighborGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<FuckTheNeighborGame> createState() => _FuckTheNeighborGameState();
 }
 
 class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
+  static const String gameId = 'game_title_ftn';
+
   // --- FARBEN & STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Brand Yellow
   final Color bgColor = const Color(0xFF222629);
@@ -63,6 +99,40 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
 
   final TextEditingController _nameController = TextEditingController();
   final ScrollController _scrollController = ScrollController(); // Für vertikales Scrollen
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resume) _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    setState(() {
+      _gameStarted = saved['gameStarted'] as bool? ?? false;
+      _gameFinished = saved['gameFinished'] as bool? ?? false;
+      _deckSize = saved['deckSize'] as int? ?? _deckSize;
+      _useMultiplier = saved['useMultiplier'] as bool? ?? false;
+      _players = ((saved['players'] as List<dynamic>?) ?? [])
+          .map((p) => Player.fromJson(Map<String, dynamic>.from(p as Map)))
+          .toList();
+      _rounds = ((saved['rounds'] as List<dynamic>?) ?? [])
+          .map((r) => RoundData.fromJson(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'gameStarted': _gameStarted,
+      'gameFinished': _gameFinished,
+      'deckSize': _deckSize,
+      'useMultiplier': _useMultiplier,
+      'players': _players.map((p) => p.toJson()).toList(),
+      'rounds': _rounds.map((r) => r.toJson()).toList(),
+    });
+  }
 
   // --- ÜBERSETZUNG ---
   String _t(String key) {
@@ -140,6 +210,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
         _players.add(Player(name: _nameController.text.trim()));
         _nameController.clear();
       });
+      _persist();
     }
   }
 
@@ -222,6 +293,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
       }
       _setupRounds();
     });
+    _persist();
   }
 
   void _setupRounds() {
@@ -242,6 +314,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
       _gameStarted = true;
       _gameFinished = false;
     });
+    _persist();
   }
 
   // --- LOGIK: GAMEPLAY ---
@@ -269,6 +342,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
           _finishRound(roundIndex);
           Navigator.pop(context);
         },
+        onDataChanged: _persist,
       ),
     );
   }
@@ -292,6 +366,7 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
         _gameFinished = true;
       }
     });
+    _persist();
   }
 
   // --- UI BUILDING ---
@@ -359,7 +434,10 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
                 color: surfaceColor,
                 child: ListTile(
                   title: Text(_players[index].name, style: const TextStyle(color: Colors.white)),
-                  trailing: IconButton(icon: Icon(Icons.delete, color: errorColor), onPressed: () => setState(() => _players.removeAt(index))),
+                  trailing: IconButton(icon: Icon(Icons.delete, color: errorColor), onPressed: () {
+                    setState(() => _players.removeAt(index));
+                    _persist();
+                  }),
                 ),
               ),
             ),
@@ -392,7 +470,10 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
               title: Text(_t('multiplier_opt'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               subtitle: Text(_t('multiplier_desc'), style: const TextStyle(color: Colors.grey, fontSize: 12)),
               value: _useMultiplier,
-              onChanged: (val) => setState(() => _useMultiplier = val),
+              onChanged: (val) {
+                setState(() => _useMultiplier = val);
+                _persist();
+              },
             ),
           ),
 
@@ -419,7 +500,10 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
   Widget _deckChip(String label, int size) {
     bool isSelected = _deckSize == size;
     return GestureDetector(
-      onTap: () => setState(() => _deckSize = size),
+      onTap: () {
+        setState(() => _deckSize = size);
+        _persist();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         alignment: Alignment.center,
@@ -743,11 +827,14 @@ class _FuckTheNeighborGameState extends State<FuckTheNeighborGame> {
               ),
               const SizedBox(height: 10),
               TextButton(
-                  onPressed: () => setState(() {
-                    _gameFinished = false;
-                    _gameStarted = false;
-                    _players.clear();
-                  }),
+                  onPressed: () {
+                    GamePersistence.clear(gameId);
+                    setState(() {
+                      _gameFinished = false;
+                      _gameStarted = false;
+                      _players.clear();
+                    });
+                  },
                   child: Text(_t('new_game'), style: const TextStyle(color: Colors.grey))
               )
             ],
@@ -769,6 +856,7 @@ class _RoundInputSheet extends StatefulWidget {
   final Color cardColor;
   final VoidCallback onRoundCompleted;
   final String Function(String) langDict; // Für Übersetzung im BottomSheet
+  final VoidCallback? onDataChanged;
 
   const _RoundInputSheet({
     required this.round,
@@ -779,6 +867,7 @@ class _RoundInputSheet extends StatefulWidget {
     required this.cardColor,
     required this.onRoundCompleted,
     required this.langDict,
+    this.onDataChanged,
   });
 
   @override
@@ -826,6 +915,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
     setState(() {
       isPhase2 = true;
     });
+    widget.onDataChanged?.call();
   }
 
   @override
@@ -959,6 +1049,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
                                 else widget.round.bids[player.name] = val - 1;
                               }
                             });
+                            widget.onDataChanged?.call();
                           }),
                           SizedBox(
                             width: 35,
@@ -971,6 +1062,7 @@ class _RoundInputSheetState extends State<_RoundInputSheet> {
                                 else widget.round.bids[player.name] = val + 1;
                               }
                             });
+                            widget.onDataChanged?.call();
                           }),
                         ],
                       ),

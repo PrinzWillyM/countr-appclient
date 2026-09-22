@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 // --- DATENSTRUKTUREN ---
 
@@ -8,6 +9,20 @@ class YazzeePlayer {
   Map<String, int?> scores; // null = noch nicht gespielt
 
   YazzeePlayer({required this.name}) : scores = {};
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'scores': scores,
+      };
+
+  factory YazzeePlayer.fromJson(Map<String, dynamic> json) {
+    final player = YazzeePlayer(name: json['name'] as String);
+    final scoresJson = Map<String, dynamic>.from((json['scores'] as Map?) ?? {});
+    scoresJson.forEach((key, value) {
+      player.scores[key] = value as int?;
+    });
+    return player;
+  }
 
   // --- BERECHNUNGEN ---
 
@@ -65,13 +80,16 @@ const Map<String, String> _categoryTranslationKeys = {
 
 class YazzeeGame extends StatefulWidget {
   final Color? themeColor;
-  const YazzeeGame({super.key, this.themeColor});
+  final bool resume;
+  const YazzeeGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<YazzeeGame> createState() => _YazzeeGameState();
 }
 
 class _YazzeeGameState extends State<YazzeeGame> {
+  static const String gameId = 'game_title_yazzee';
+
   // --- FARBEN & STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFF4CBF98); // Diesmal Grün als Hauptfarbe
   final Color secondaryColor = const Color(0xFFEBCB63); // Gelb für Akzente
@@ -91,6 +109,35 @@ class _YazzeeGameState extends State<YazzeeGame> {
   List<YazzeePlayer> _players = [];
   final TextEditingController _nameController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resume) _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    setState(() {
+      _gameStarted = saved['gameStarted'] as bool? ?? false;
+      _gameFinished = saved['gameFinished'] as bool? ?? false;
+      _currentPlayerIndex = saved['currentPlayerIndex'] as int? ?? 0;
+      final savedPlayers = (saved['players'] as List<dynamic>?) ?? [];
+      _players = savedPlayers
+          .map((p) => YazzeePlayer.fromJson(Map<String, dynamic>.from(p as Map)))
+          .toList();
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'gameStarted': _gameStarted,
+      'gameFinished': _gameFinished,
+      'currentPlayerIndex': _currentPlayerIndex,
+      'players': _players.map((p) => p.toJson()).toList(),
+    });
+  }
 
   // --- ÜBERSETZUNG ---
   String _t(String key) {
@@ -478,6 +525,7 @@ class _YazzeeGameState extends State<YazzeeGame> {
         _players.add(YazzeePlayer(name: _nameController.text.trim()));
         _nameController.clear();
       });
+      _persist();
     }
   }
 
@@ -492,6 +540,7 @@ class _YazzeeGameState extends State<YazzeeGame> {
       _gameFinished = false;
       _currentPlayerIndex = 0;
     });
+    _persist();
   }
 
   void _resetGame() {
@@ -501,6 +550,8 @@ class _YazzeeGameState extends State<YazzeeGame> {
       _currentPlayerIndex = 0;
       _players.clear();
     });
+    // Discards the whole match - nothing left worth resuming.
+    GamePersistence.clear(gameId);
   }
 
   void _rematch() {
@@ -511,6 +562,7 @@ class _YazzeeGameState extends State<YazzeeGame> {
       _gameFinished = false;
       _currentPlayerIndex = 0;
     });
+    _persist();
   }
 
   // Rückt den Zug zum nächsten Spieler weiter, der noch nicht fertig ist.
@@ -596,6 +648,7 @@ class _YazzeeGameState extends State<YazzeeGame> {
                   _advanceTurn();
                 }
               });
+              _persist();
               Navigator.pop(context);
             },
             child: Text(_t('save')),
@@ -690,7 +743,10 @@ class _YazzeeGameState extends State<YazzeeGame> {
                 color: surfaceColor,
                 child: ListTile(
                   title: Text(_players[index].name, style: const TextStyle(color: Colors.white)),
-                  trailing: IconButton(icon: Icon(Icons.delete, color: errorColor), onPressed: () => setState(() => _players.removeAt(index))),
+                  trailing: IconButton(icon: Icon(Icons.delete, color: errorColor), onPressed: () {
+                    setState(() => _players.removeAt(index));
+                    _persist();
+                  }),
                 ),
               ),
             ),

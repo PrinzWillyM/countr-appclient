@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../services/game_persistence.dart';
 
 // --- MODELS ---
 enum TournamentType { knockout, league }
@@ -19,6 +20,22 @@ class TournamentMatch {
     this.round = 1,
     this.winner,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'player1': player1,
+        'player2': player2,
+        'winner': winner,
+        'round': round,
+      };
+
+  factory TournamentMatch.fromJson(Map<String, dynamic> json) => TournamentMatch(
+        id: json['id'] as String,
+        player1: json['player1'] as String,
+        player2: json['player2'] as String,
+        round: json['round'] as int,
+        winner: json['winner'] as String?,
+      );
 }
 
 class LeaguePlayer {
@@ -28,19 +45,36 @@ class LeaguePlayer {
   int points;
 
   LeaguePlayer({required this.name, this.wins = 0, this.losses = 0, this.points = 0});
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'wins': wins,
+        'losses': losses,
+        'points': points,
+      };
+
+  factory LeaguePlayer.fromJson(Map<String, dynamic> json) => LeaguePlayer(
+        name: json['name'] as String,
+        wins: json['wins'] as int,
+        losses: json['losses'] as int,
+        points: json['points'] as int,
+      );
 }
 
 // --- WIDGET ---
 class TournamentGame extends StatefulWidget {
   final Color? themeColor;
+  final bool resume;
 
-  const TournamentGame({super.key, this.themeColor});
+  const TournamentGame({super.key, this.themeColor, this.resume = false});
 
   @override
   State<TournamentGame> createState() => _TournamentGameState();
 }
 
 class _TournamentGameState extends State<TournamentGame> {
+  static const String gameId = 'game_title_tourney';
+
   // --- STYLE ---
   Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Standard Gelb
   final Color bgColor = const Color(0xFF222629);
@@ -57,6 +91,43 @@ class _TournamentGameState extends State<TournamentGame> {
   List<TournamentMatch> _matches = [];
   List<LeaguePlayer> _leagueTable = [];
   int _currentRound = 1; // Nur für K.O.
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resume) _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    final saved = await GamePersistence.load(gameId);
+    if (saved == null || !mounted) return;
+    setState(() {
+      _step = saved['step'] as int? ?? 0;
+      final modeName = saved['selectedMode'] as String?;
+      _selectedMode = modeName == null
+          ? null
+          : TournamentType.values.firstWhere((t) => t.name == modeName);
+      _playerNames = List<String>.from((saved['playerNames'] as List<dynamic>?) ?? []);
+      _matches = ((saved['matches'] as List<dynamic>?) ?? [])
+          .map((m) => TournamentMatch.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+      _leagueTable = ((saved['leagueTable'] as List<dynamic>?) ?? [])
+          .map((p) => LeaguePlayer.fromJson(Map<String, dynamic>.from(p as Map)))
+          .toList();
+      _currentRound = saved['currentRound'] as int? ?? 1;
+    });
+  }
+
+  void _persist() {
+    GamePersistence.save(gameId, {
+      'step': _step,
+      'selectedMode': _selectedMode?.name,
+      'playerNames': _playerNames,
+      'matches': _matches.map((m) => m.toJson()).toList(),
+      'leagueTable': _leagueTable.map((p) => p.toJson()).toList(),
+      'currentRound': _currentRound,
+    });
+  }
 
   // --- LANGUAGE ---
   // Immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
@@ -277,6 +348,7 @@ class _TournamentGameState extends State<TournamentGame> {
         _playerNames.add(_nameController.text.trim());
         _nameController.clear();
       });
+      _persist();
     }
   }
 
@@ -299,6 +371,7 @@ class _TournamentGameState extends State<TournamentGame> {
         _calculateLeagueTable();
       }
     });
+    _persist();
   }
 
   // --- LOGIC: KNOCKOUT ---
@@ -340,6 +413,7 @@ class _TournamentGameState extends State<TournamentGame> {
       _currentRound++;
       _generateKnockoutRound(winners);
     });
+    _persist();
   }
 
   // --- LOGIC: LEAGUE ---
@@ -388,6 +462,7 @@ class _TournamentGameState extends State<TournamentGame> {
         _calculateLeagueTable();
       }
     });
+    _persist();
   }
 
   void _showRules() {
@@ -460,10 +535,13 @@ class _TournamentGameState extends State<TournamentGame> {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => setState(() {
-          _selectedMode = type;
-          _step = 1;
-        }),
+        onTap: () {
+          setState(() {
+            _selectedMode = type;
+            _step = 1;
+          });
+          _persist();
+        },
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -539,7 +617,10 @@ class _TournamentGameState extends State<TournamentGame> {
                     Text("${entry.key + 1}. ${entry.value}", style: const TextStyle(color: Colors.white, fontSize: 16)),
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.grey.shade600),
-                      onPressed: () => setState(() => _playerNames.removeAt(entry.key)),
+                      onPressed: () {
+                        setState(() => _playerNames.removeAt(entry.key));
+                        _persist();
+                      },
                     )
                   ],
                 ),
@@ -601,7 +682,10 @@ class _TournamentGameState extends State<TournamentGame> {
                   Text(roundMatches.first.winner ?? "", style: TextStyle(color: primaryColor, fontSize: 40, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 50),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      GamePersistence.clear(gameId);
+                      Navigator.pop(context);
+                    },
                     style: ElevatedButton.styleFrom(backgroundColor: surfaceColor),
                     child: Text(_t('reset'), style: const TextStyle(color: Colors.white)),
                   )
