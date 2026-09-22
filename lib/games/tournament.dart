@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
 
 // --- MODELS ---
 enum TournamentType { knockout, league }
@@ -59,22 +59,8 @@ class _TournamentGameState extends State<TournamentGame> {
   int _currentRound = 1; // Nur für K.O.
 
   // --- LANGUAGE ---
-  String _currentLang = 'en';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadLanguage();
-  }
-
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _currentLang = prefs.getString('language_code') ?? 'de';
-      });
-    }
-  }
+  // Immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
+  String get _currentLang => appLocaleNotifier.value.languageCode;
 
   String _t(String key) {
     const Map<String, Map<String, String>> dictionary = {

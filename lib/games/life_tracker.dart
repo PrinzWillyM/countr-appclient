@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
 
 class LifeTrackerGame extends StatefulWidget {
   final Color? themeColor;
@@ -22,7 +22,8 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
   int playerCount = 2;
   int startLife = 20;
   List<Map<String, dynamic>> players = [];
-  String _currentLang = 'en';
+  // Sprache: immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
+  String get _currentLang => appLocaleNotifier.value.languageCode;
 
   final TextEditingController _renameController = TextEditingController();
 
@@ -32,17 +33,7 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
   @override
   void initState() {
     super.initState();
-    _loadLanguage();
     _resetGame();
-  }
-
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _currentLang = prefs.getString('language_code') ?? 'de';
-      });
-    }
   }
 
   // --- ÜBERSETZUNG ---

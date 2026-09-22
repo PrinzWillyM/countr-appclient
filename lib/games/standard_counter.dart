@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
 
 class StandardCounterGame extends StatefulWidget {
   final Color? themeColor;
@@ -23,24 +23,8 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
   final TextEditingController _renameController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  // Sprach-Status (Default 'en', wird in initState überschrieben)
-  String _currentLang = 'en';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadLanguage();
-  }
-
-  // Lade Sprache direkt aus dem Speicher, um Context-Probleme zu umgehen
-  Future<void> _loadLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _currentLang = prefs.getString('language_code') ?? 'de';
-      });
-    }
-  }
+  // Sprache: immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
+  String get _currentLang => appLocaleNotifier.value.languageCode;
 
   // --- ÜBERSETZUNG ---
   String _t(String key) {

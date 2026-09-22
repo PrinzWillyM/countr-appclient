@@ -4,6 +4,7 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:confetti/confetti.dart';
@@ -216,10 +217,10 @@ List<GameData> get globalGameList => [
   GameData(translationKey: 'game_title_life', icon: Icons.favorite, category: GameCategory.utility, minPlayers: 2, maxPlayers: 6,
       pageBuilder: (c, color) => const LifeTrackerGame()),
 
-  GameData(translationKey: 'game_title_jass', icon: Icons.edit_note, category: GameCategory.card, minPlayers: 4, maxPlayers: 4,
+  GameData(translationKey: 'game_title_jass', icon: Icons.edit_note, category: GameCategory.card, minPlayers: 3, maxPlayers: 8,
       pageBuilder: (c, color) => const JassenGame()),
 
-  GameData(translationKey: 'game_title_ftn', icon: Icons.style, category: GameCategory.card, minPlayers: 3, maxPlayers: 9,
+  GameData(translationKey: 'game_title_ftn', icon: Icons.style, category: GameCategory.card, minPlayers: 3, maxPlayers: 12,
       pageBuilder: (c, color) => const FuckTheNeighborGame()),
 
   GameData(translationKey: 'game_title_mtg', icon: Icons.auto_fix_high, category: GameCategory.card, minPlayers: 2, maxPlayers: 6,
@@ -232,10 +233,10 @@ List<GameData> get globalGameList => [
       pageBuilder: (c, color) => const DartsGame()),
 
   GameData(translationKey: 'game_title_yazzee', icon: Icons.casino, category: GameCategory.dice, minPlayers: 1, maxPlayers: 6,
-      pageBuilder: (c, color) => const YazzeeGame()),
+      pageBuilder: (c, color) => YazzeeGame(themeColor: color)),
 
   GameData(translationKey: 'game_title_10k', icon: Icons.grain, category: GameCategory.dice, minPlayers: 2, maxPlayers: 8,
-      pageBuilder: (c, color) => const TenThousandGame()),
+      pageBuilder: (c, color) => TenThousandGame(themeColor: color)),
 
   GameData(translationKey: 'suggestion_btn', icon: Icons.help_outline, category: GameCategory.other, onAction: () async {
     final Uri emailLaunchUri = Uri(
@@ -300,13 +301,20 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
 
           // -----------------------------------------
-          locale: DevicePreview.locale(context),
           builder: DevicePreview.appBuilder,
           // -----------------------------------------
 
           debugShowCheckedModeBanner: false,
           title: 'Countr',
-          // locale: locale,
+          // Die App-eigene Sprachauswahl steuert die Locale (inkl. RTL für Arabisch etc.),
+          // unabhängig von DevicePreview (nur für Geräte-Vorschau im Debug-Modus).
+          locale: locale,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: languageMap.keys.map((code) => Locale(code)),
           theme: ThemeData(
             useMaterial3: true,
             scaffoldBackgroundColor: darkBackground,
@@ -444,10 +452,10 @@ class _HomeScreenState extends State<HomeScreen> {
       GameData(translationKey: 'game_title_life', icon: Icons.favorite, category: GameCategory.utility, minPlayers: 2, maxPlayers: 6,
           pageBuilder: (c, color) => const LifeTrackerGame()),
 
-      GameData(translationKey: 'game_title_jass', icon: Icons.edit_note, category: GameCategory.card, minPlayers: 4, maxPlayers: 4,
+      GameData(translationKey: 'game_title_jass', icon: Icons.edit_note, category: GameCategory.card, minPlayers: 3, maxPlayers: 8,
           pageBuilder: (c, color) => JassenGame()),
 
-      GameData(translationKey: 'game_title_ftn', icon: Icons.style, category: GameCategory.card, minPlayers: 3, maxPlayers: 9,
+      GameData(translationKey: 'game_title_ftn', icon: Icons.style, category: GameCategory.card, minPlayers: 3, maxPlayers: 12,
           pageBuilder: (c, color) => const FuckTheNeighborGame()),
 
       GameData(translationKey: 'game_title_mtg', icon: Icons.auto_fix_high, category: GameCategory.card, minPlayers: 2, maxPlayers: 6,
@@ -460,10 +468,10 @@ class _HomeScreenState extends State<HomeScreen> {
           pageBuilder: (c, color) => DartsGame(themeColor: color)),
 
       GameData(translationKey: 'game_title_yazzee', icon: Icons.casino, category: GameCategory.dice, minPlayers: 1, maxPlayers: 6,
-          pageBuilder: (c, color) => const YazzeeGame()),
+          pageBuilder: (c, color) => YazzeeGame(themeColor: color)),
 
       GameData(translationKey: 'game_title_10k', icon: Icons.grain, category: GameCategory.dice, minPlayers: 2, maxPlayers: 8,
-          pageBuilder: (c, color) => const TenThousandGame()),
+          pageBuilder: (c, color) => TenThousandGame(themeColor: color)),
 
       GameData(translationKey: 'suggestion_btn', icon: Icons.help_outline, category: GameCategory.other, onAction: () async {
         final Uri emailLaunchUri = Uri(
