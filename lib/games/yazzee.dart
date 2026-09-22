@@ -455,26 +455,6 @@ class _YazzeeGameState extends State<YazzeeGame> {
         'cat_small_straight': 'ছোট স্ট্রেট', 'cat_large_straight': 'বড় স্ট্রেট',
         'cat_yahtzee': 'ইয়াহতজি', 'cat_chance': 'চান্স', 'cat_total': 'মোট',
       },
-      'ar': {
-        'title': 'Yazzee', 'new_game_tooltip': 'لعبة جديدة', 'add_hint': 'اسم اللاعب',
-        'max_players_err': '6 لاعبين كحد أقصى!', 'min_players_err': 'يلزم لاعب واحد على الأقل!',
-        'start_btn': 'بدء اللعبة', 'cancel': 'إلغاء', 'save': 'حفظ',
-        'strike': 'شطب (0)', 'standard_prefix': 'قياسي', 'for_player': 'لـ',
-        'winner_label': 'الفائز', 'points_label': 'نقاط', 'rematch': 'إعادة المباراة',
-        'new_game_setup': 'لعبة جديدة (إعداد)', 'rules': 'القواعد', 'ok': 'فهمت',
-        'rules_text': 'لوحة تسجيل نقاط للألعاب على طراز ياهتزي (يلزم نرد حقيقي).\n\n'
-            '• يرمي كل لاعب النرد ويسجل نتيجته في الفئة المناسبة.\n'
-            '• القسم العلوي (واحد-ستة): مجموع قيمة ذلك النرد.\n'
-            '• مكافأة: 35 نقطة إذا بلغ مجموع القسم العلوي 63 نقطة على الأقل.\n'
-            '• القسم السفلي: ثلاثة/أربعة متشابهة (مجموع كل النرد)، فول هاوس (25)، تتابع صغير (30)، تتابع كبير (40)، ياهتزي (50)، فرصة (مجموع كل النرد).\n'
-            '• يمكن أيضاً شطب فئة بـ 0 إذا لم يتم الحصول على رمية مناسبة.\n'
-            '• تنتهي اللعبة عندما يملأ كل لاعب جميع الفئات - يفوز صاحب أعلى مجموع.',
-        'cat_1': 'واحد', 'cat_2': 'اثنان', 'cat_3': 'ثلاثة', 'cat_4': 'أربعة', 'cat_5': 'خمسة', 'cat_6': 'ستة',
-        'cat_upper_sum': 'مجموع علوي', 'cat_bonus': 'مكافأة',
-        'cat_three_kind': 'ثلاثة متشابهة', 'cat_four_kind': 'أربعة متشابهة', 'cat_full_house': 'فول هاوس',
-        'cat_small_straight': 'تتابع صغير', 'cat_large_straight': 'تتابع كبير',
-        'cat_yahtzee': 'ياهتزي', 'cat_chance': 'فرصة', 'cat_total': 'المجموع',
-      },
     };
 
     if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {

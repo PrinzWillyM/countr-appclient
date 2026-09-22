@@ -72,7 +72,6 @@ class _LifeTrackerGameState extends State<LifeTrackerGame> {
       'zh': { 'title': '生命计数器', 'start_life': '初始生命', 'players': '玩家', 'reset': '重置', 'rules_title': '说明', 'ok': '明白了', 'cancel': '取消', 'save': '保存', 'rename_title': '重命名', 'rules_text': '卡牌游戏的生命计数器。' },
       'hi': { 'title': 'जीवन ट्रैकर', 'start_life': 'प्रारंभिक जीवन', 'players': 'खिलाड़ी', 'reset': 'रीसेट', 'rules_title': 'निर्देश', 'ok': 'समझ गया', 'cancel': 'रद्द करें', 'save': 'सहेजें', 'rename_title': 'नाम बदलें', 'rules_text': 'कार्ड गेम के लिए लाइफ काउंटर।' },
       'bn': { 'title': 'লাইফ ট্র্যাকার', 'start_life': 'শুরুর জীবন', 'players': 'খেলোয়াড়', 'reset': 'রিসেট', 'rules_title': 'নির্দেশনা', 'ok': 'বুঝেছি', 'cancel': 'বাতিল', 'save': 'সংরক্ষণ', 'rename_title': 'নাম পরিবর্তন', 'rules_text': 'কার্ড গেমের জন্য লাইফ কাউন্টার।' },
-      'ar': { 'title': 'تتبع الحياة', 'start_life': 'حياة البداية', 'players': 'اللاعبين', 'reset': 'إعادة تعيين', 'rules_title': 'تعليمات', 'ok': 'فهمت', 'cancel': 'إلغاء', 'save': 'حفظ', 'rename_title': 'تغيير الاسم', 'rules_text': 'عداد حياة لألعاب الورق.' },
     };
 
     if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {

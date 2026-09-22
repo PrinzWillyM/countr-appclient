@@ -128,7 +128,6 @@ class AppTranslations {
     'zh': { 'slogan': '所有游戏的一个计数器。', 'heart_clicks': '点击爱心次数', 'hidden_games_title': '隐藏的游戏', 'restore': '恢复', 'msg_hidden': '游戏已隐藏', 'msg_fav_added': '已添加到收藏', 'msg_fav_removed': '已从收藏移除', 'game_title_std': '标准计数器', 'game_title_tourney': '锦标赛', 'game_title_life': '生命计数器', 'game_title_jass': 'Jass', 'game_title_ftn': 'Fuck the Neighbor', 'game_title_mtg': 'Magic: The Gathering', 'game_title_pkm': 'Pokémon TCG', 'game_title_darts': '飞镖 X01', 'game_title_yazzee': 'Yazzee', 'game_title_10k': '10\'000 (Farkle)', 'game_cards': '卡牌', 'game_dice': '骰子', 'game_utility': '工具', 'game_other': '其他', 'filter_all': '全部', 'filter_fav': '收藏', 'no_games_found': '未找到游戏', 'no_favs': '还没有收藏', 'empty': '空', 'start': '开始', 'mail': '发送邮件', 'suggestion_btn': '建议游戏', 'made_with': '用♥️在瑞士制作', 'info_title': '信息与设置', 'about_title': '关于 Countr', 'about_text': 'Countr 是一个免费的业余项目。简单、无广告、无跟踪。', 'impressum_title': '版本信息与联系方式', 'address': 'Sportlerweg 10\n8360 Eschlikon\n瑞士', 'feedback_hint': '非常欢迎您的反馈！', 'language_title': '语言', 'player_suffix': '玩家', 'hidden_games_empty': '没有隐藏的游戏' },
     'hi': { 'slogan': 'सभी खेलों के लिए एक काउंटर।', 'heart_clicks': 'बार दिल पर क्लिक किया', 'hidden_games_title': 'छिपे हुए खेल', 'restore': 'पुनर्स्थापित करें', 'msg_hidden': 'खेल छिपा दिया गया', 'msg_fav_added': 'पसंदीदा में जोड़ा गया', 'msg_fav_removed': 'पसंदीदा से हटाया गया', 'game_title_std': 'मानक काउंटर', 'game_title_tourney': 'टूर्नामेंट', 'game_title_life': 'जीवन ट्रैकर', 'game_title_jass': 'Jass', 'game_title_ftn': 'Fuck the Neighbor', 'game_title_mtg': 'Magic: The Gathering', 'game_title_pkm': 'Pokémon TCG', 'game_title_darts': 'डार्ट्स X01', 'game_title_yazzee': 'Yazzee', 'game_title_10k': '10\'000 (Farkle)', 'game_cards': 'कार्ड्स', 'game_dice': 'पासे', 'game_utility': 'टूल्स', 'game_other': 'अन्य', 'filter_all': 'सभी', 'filter_fav': 'पसंदीदा', 'no_games_found': 'कोई गेम नहीं मिला', 'no_favs': 'अभी तक कोई पसंदीदा नहीं', 'empty': 'खाली', 'start': 'शुरू करें', 'mail': 'मेल भेजें', 'suggestion_btn': 'गेम सुझाएं', 'made_with': 'स्विट्ज़रलैंड में ♥️ के साथ निर्मित', 'info_title': 'जानकारी और सेटिंग्स', 'about_title': 'Countr के बारे में', 'about_text': 'Countr एक मुफ़्त शौक परियोजना है। सरल, विज्ञापन-मुक्त और बिना ट्रैकिंग के।', 'impressum_title': 'इम्प्रेसम और संपर्क', 'address': 'Sportlerweg 10\n8360 Eschlikon\nस्विट्ज़रलैंड', 'feedback_hint': 'प्रतिक्रिया का स्वागत है!', 'language_title': 'भाषा', 'player_suffix': 'खिलाड़ी', 'hidden_games_empty': 'कोई छिपा हुआ गेम नहीं' },
     'bn': { 'slogan': 'সমস্ত গেমের জন্য একটি কাউন্টার।', 'heart_clicks': 'হার্টে ক্লিক করার সংখ্যা', 'hidden_games_title': 'লুকানো গেম', 'restore': 'পুনরুদ্ধার করুন', 'msg_hidden': 'গেম লুকানো হয়েছে', 'msg_fav_added': 'প্রিয়তে যোগ করা হয়েছে', 'msg_fav_removed': 'প্রিয় থেকে সরানো হয়েছে', 'game_title_std': 'স্ট্যান্ডার্ড কাউন্টার', 'game_title_tourney': 'টুর্নামেন্ট', 'game_title_life': 'লাইফ ট্র্যাকার', 'game_title_jass': 'Jass', 'game_title_ftn': 'Fuck the Neighbor', 'game_title_mtg': 'Magic: The Gathering', 'game_title_pkm': 'Pokémon TCG', 'game_title_darts': 'ডার্টস X01', 'game_title_yazzee': 'Yazzee', 'game_title_10k': '10\'000 (Farkle)', 'game_cards': 'কার্ড', 'game_dice': 'পাশা', 'game_utility': 'টুলস', 'game_other': 'অন্যান্য', 'filter_all': 'সব', 'filter_fav': 'পছন্দের', 'no_games_found': 'কোনো গেম পাওয়া যায়নি', 'no_favs': 'এখনো কোনো প্রিয় নেই', 'empty': 'খালি', 'start': 'শুরু করুন', 'mail': 'মেইল পাঠান', 'suggestion_btn': 'গেম প্রস্তাব করুন', 'made_with': 'সুইজারল্যান্ডে ♥️ দিয়ে তৈরি', 'info_title': 'তথ্য ও সেটিংস', 'about_title': 'Countr সম্পর্কে', 'about_text': 'Countr একটি বিনামূল্যের শখের প্রকল্প। সহজ, বিজ্ঞাপনমুক্ত এবং ট্র্যাকিং ছাড়া।', 'impressum_title': 'ইমপ্রেসাম ও যোগাযোগ', 'address': 'Sportlerweg 10\n8360 Eschlikon\nসুইজারল্যান্ড', 'feedback_hint': 'প্রতিক্রিয়া আন্তরিকভাবে স্বাগত!', 'language_title': 'ভাষা', 'player_suffix': 'খেলোয়াড়', 'hidden_games_empty': 'কোনো লুকানো গেম নেই' },
-    'ar': { 'slogan': 'عداد واحد لجميع الألعاب.', 'heart_clicks': 'مرات النقر على القلب', 'hidden_games_title': 'الألعاب المخفية', 'restore': 'استعادة', 'msg_hidden': 'تم إخفاء اللعبة', 'msg_fav_added': 'تمت الإضافة للمفضلة', 'msg_fav_removed': 'تمت الإزالة من المفضلة', 'game_title_std': 'العداد القياسي', 'game_title_tourney': 'دورة', 'game_title_life': 'تتبع الحياة', 'game_title_jass': 'Jass', 'game_title_ftn': 'Fuck the Neighbor', 'game_title_mtg': 'Magic: The Gathering', 'game_title_pkm': 'Pokémon TCG', 'game_title_darts': 'سهام X01', 'game_title_yazzee': 'Yazzee', 'game_title_10k': '10\'000 (Farkle)', 'game_cards': 'بطاقات', 'game_dice': 'نرد', 'game_utility': 'أدوات', 'game_other': 'أخرى', 'filter_all': 'الكل', 'filter_fav': 'المفضلة', 'no_games_found': 'لم يتم العثور على ألعاب', 'no_favs': 'لا توجد مفضلات بعد', 'empty': 'فارغ', 'start': 'ابدأ', 'mail': 'إرسال بريد', 'suggestion_btn': 'اقتراح لعبة', 'made_with': 'صنع بـ ♥️ في سويسرا', 'info_title': 'معلومات وإعدادات', 'about_title': 'حول Countr', 'about_text': 'Countr مشروع هواية مجاني. بسيط، بدون إعلانات وبدون تتبع.', 'impressum_title': 'بيانات الناشر والاتصال', 'address': 'Sportlerweg 10\n8360 Eschlikon\nسويسرا', 'feedback_hint': 'ملاحظاتكم موضع ترحيب كبير!', 'language_title': 'اللغة', 'player_suffix': 'اللاعبين', 'hidden_games_empty': 'لا توجد ألعاب مخفية' },
   };
 
   static String get(String key) {
@@ -146,7 +145,7 @@ final Map<String, String> languageMap = {
   'es': 'Español', 'pt': 'Português', 'nl': 'Nederlands', 'pl': 'Polski',
   'tr': 'Türkçe', 'id': 'Indonesia', 'sv': 'Svenska', 'hr': 'Hrvatski',
   'ru': 'Русский', 'ja': '日本語', 'ko': '한국어', 'zh': '中文',
-  'hi': 'हिन्दी', 'bn': 'বাংলা', 'ar': 'العربية',
+  'hi': 'हिन्दी', 'bn': 'বাংলা',
 };
 
 enum GameCategory { card, dice, utility, other }
@@ -241,7 +240,7 @@ List<GameData> get globalGameList => [
   GameData(translationKey: 'suggestion_btn', icon: Icons.help_outline, category: GameCategory.other, onAction: () async {
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
-      path: 'siro@duschletta.me',
+      path: 'countr@duschletta.me',
       query: 'subject=Countr Feedback',
     );
     try {
@@ -476,7 +475,7 @@ class _HomeScreenState extends State<HomeScreen> {
       GameData(translationKey: 'suggestion_btn', icon: Icons.help_outline, category: GameCategory.other, onAction: () async {
         final Uri emailLaunchUri = Uri(
           scheme: 'mailto',
-          path: 'siro@duschletta.me',
+          path: 'countr@duschletta.me',
           query: 'subject=Countr Feedback',
         );
         try {
@@ -1077,14 +1076,6 @@ class _InfoScreenState extends State<InfoScreen> {
 
                 const Divider(color: Colors.white24, height: 40),
 
-                Text(AppTranslations.get('impressum_title'), style: const TextStyle(color: brandYellow, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 15),
-                _infoRow(Icons.person, "Siro Duschletta"),
-                const SizedBox(height: 10),
-                _infoRow(Icons.location_on, AppTranslations.get('address')),
-                const SizedBox(height: 10),
-                _infoRow(Icons.email, "siro@duschletta.me"),
-                const SizedBox(height: 20),
                 Center(
                   child: Text(
                     AppTranslations.get('feedback_hint'),
@@ -1116,16 +1107,6 @@ class _InfoScreenState extends State<InfoScreen> {
     ];
   }
 
-  Widget _infoRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: Colors.grey, size: 20),
-        const SizedBox(width: 15),
-        Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 15))),
-      ],
-    );
-  }
 
   Widget _langChip(String code, String name, bool isSelected, VoidCallback onTap) {
     return GestureDetector(

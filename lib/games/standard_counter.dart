@@ -137,12 +137,6 @@ class _StandardCounterGameState extends State<StandardCounterGame> {
         'start_hint': 'খেলোয়াড় যোগ করুন', 'add_btn': 'খেলোয়াড় যোগ করুন', 'player_default': 'খেলোয়াড়', 'rename_title': 'নাম পরিবর্তন',
         'save': 'সংরক্ষণ', 'rules_title': 'নির্দেশনা', 'rules_text': 'সহজ কাউন্টার।\n\n• স্কোর বদলাতে + বা - চাপুন।\n• নাম বদলাতে পেন্সিল চাপুন।\n• মুছতে সোয়াইপ করুন।', 'ok': 'বুঝেছি',
       },
-      'ar': {
-        'title': 'العداد القياسي', 'reset_title': 'إعادة تعيين؟', 'reset_msg': 'ستعود النقاط إلى 0.',
-        'cancel': 'إلغاء', 'reset_confirm': 'إعادة تعيين', 'delete_confirm': 'حذف', 'no_players': 'لا لاعبين',
-        'start_hint': 'أضف لاعبين', 'add_btn': 'إضافة لاعب', 'player_default': 'لاعب', 'rename_title': 'تغيير الاسم',
-        'save': 'حفظ', 'rules_title': 'تعليمات', 'rules_text': 'عداد بسيط.\n\n• + أو - للنقاط.\n• القلم للاسم.\n• اسحب للحذف.', 'ok': 'فهمت',
-      },
     };
 
     // Nutze die geladene Sprache aus SharedPreferences

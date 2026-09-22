@@ -442,27 +442,6 @@ class _DartsGameState extends State<DartsGame> {
         'new_round': 'নতুন লেগ', 'rematch': 'রিম্যাচ', 'finish': 'শেষ করুন',
         'stat_avg': 'গড় (৩ ডার্ট)', 'stat_legs': 'লেগ', 'stat_checkout': 'সেরা চেকআউট', 'stat_darts': 'ডার্ট',
       },
-      'ar': {
-        'title': 'دارتس X01', 'rules_title': 'قواعد دارتس X01', 'ok': 'فهمت',
-        'r_goal_title': 'الهدف', 'r_goal_text': 'الوصول إلى 0 نقطة بالضبط.',
-        'r_flow_title': 'سير اللعب', 'r_flow_text': 'يرمي كل لاعب 3 سهام. يُطرح المجموع.',
-        'r_bust_title': 'باست (تجاوز)', 'r_bust_text': 'إذا سجلت نقاطًا أكثر مما تبقى لك (أو تبقى 1 بالضبط)، تُلغى الرمية. تبقى على النتيجة السابقة للرمية.',
-        'r_double_title': 'دبل-آوت', 'r_double_text': 'عند تفعيل قاعدة دبل-آوت، يجب تأكيد أن آخر سهم أصاب منطقة مضاعفة (أو البُل) للفوز بالشوط.',
-        'r_format_title': 'صيغة المباراة', 'r_format_text': 'اختر "أفضل X أشواط" - من يفوز بأغلبية الأشواط أولاً يفوز بالمباراة.',
-        'r_checkout_title': 'اقتراحات الإنهاء', 'r_checkout_text': 'للنقاط المتبقية حتى 170، يعرض التطبيق طريقة إنهاء محتملة بأقل عدد من السهام.',
-        'add_players_needed': 'الرجاء إضافة لاعبين!', 'add_hint': 'اسم اللاعب', 'max_players_err': 'الحد الأقصى 8 لاعبين!',
-        'game_mode': 'وضع اللعب', 'match_format': 'صيغة المباراة', 'one_leg': 'شوط واحد',
-        'double_out': 'دبل-آوت', 'double_out_desc': 'يجب أن ينتهي الإنهاء بمنطقة مضاعفة/بُل',
-        'start_btn': 'GAME ON!', 'throw_hint': 'أدخل الرمية...', 'checkout_label': 'الإنهاء',
-        'legs_label': 'الأشواط', 'stats': 'إحصائيات',
-        'max_score_err': 'الحد الأقصى 180 نقطة ممكنة!', 'bust_msg': 'تجاوز! العودة إلى',
-        'checkout_confirm_title': 'تأكيد الإنهاء', 'checkout_confirm_msg': 'هل أصاب آخر سهم منطقة مضاعفة (أو البُل)؟',
-        'no': 'لا', 'yes': 'نعم',
-        'wins_match': 'يفوز بالمباراة!', 'wins_leg': 'يفوز بالشوط!',
-        'leg_status': 'نتيجة الأشواط', 'new_leg_q': 'بدء شوط جديد؟',
-        'new_round': 'شوط جديد', 'rematch': 'إعادة المباراة', 'finish': 'إنهاء',
-        'stat_avg': 'المعدل (3 سهام)', 'stat_legs': 'الأشواط', 'stat_checkout': 'أفضل إنهاء', 'stat_darts': 'السهام',
-      },
     };
 
     if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {

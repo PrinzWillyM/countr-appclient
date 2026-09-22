@@ -262,17 +262,6 @@ class _TournamentGameState extends State<TournamentGame> {
         'bye': 'বাই', 'rules_title': 'নির্দেশনা', 'ok': 'বুঝেছি',
         'rules_text': 'মোড নির্বাচন করুন:\n\n• নকআউট: বিজয়ী এগিয়ে যায়।\n• লিগ: রাউন্ড রবিন। জয় = ৩ পয়েন্ট।\n\nবিজয়ী নির্বাচন করতে ম্যাচে ট্যাপ করুন।',
       },
-      'ar': {
-        'title': 'بطولة', 'mode_ko': 'خروج المغلوب', 'mode_league': 'دوري',
-        'mode_ko_desc': 'الخاسر يخرج.', 'mode_league_desc': 'الكل يلعب ضد الكل.',
-        'add_players': 'المشاركين', 'add_hint': 'أدخل الاسم', 'start': 'بدء',
-        'round': 'جولة', 'winner': 'الفائز', 'standing': 'الترتيب',
-        'games': 'مباريات', 'wins': 'فوز', 'points': 'نقاط', 'set_winner': 'من فاز؟',
-        'champion': 'البطل:', 'next_round': 'الجولة التالية',
-        'game_over': 'انتهت البطولة!', 'reset': 'خروج', 'not_enough': 'مطلوب لاعبين 2+',
-        'bye': 'تأهل تلقائي', 'rules_title': 'تعليمات', 'ok': 'فهمت',
-        'rules_text': 'اختر الوضع:\n\n• خروج المغلوب: الفائز يتأهل.\n• دوري: الكل ضد الكل. الفوز = 3 نقاط.\n\nاضغط على المباراة لاختيار الفائز.',
-      },
     };
     if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {
       return dictionary[_currentLang]![key]!;
