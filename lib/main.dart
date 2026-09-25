@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:device_preview/device_preview.dart';
+// import 'package:device_preview/device_preview.dart'; // Geräte-Vorschau, siehe main()
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -279,24 +279,26 @@ void main() async {
     }
   }
 
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]).then((_) {
-    runApp(
-      DevicePreview(
-        enabled: !kReleaseMode,
-        builder: (context) => const MyApp(),
-      ),
-    );
-  });
-
+  // Geräte-Vorschau (DevicePreview) für Screenshots/Tests auf anderen Bildschirmgrössen.
+  // Zum Aktivieren: diesen Block, den Import oben und `builder:` in MyApp wieder einkommentieren.
   // SystemChrome.setPreferredOrientations([
   //   DeviceOrientation.portraitUp,
   //   DeviceOrientation.portraitDown,
   // ]).then((_) {
-  //   runApp(const MyApp());
+  //   runApp(
+  //     DevicePreview(
+  //       enabled: !kReleaseMode,
+  //       builder: (context) => const MyApp(),
+  //     ),
+  //   );
   // });
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]).then((_) {
+    runApp(const MyApp());
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -310,13 +312,13 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
 
           // -----------------------------------------
-          builder: DevicePreview.appBuilder,
+          // builder: DevicePreview.appBuilder,
           // -----------------------------------------
 
           debugShowCheckedModeBanner: false,
           title: 'Countr',
-          // Die App-eigene Sprachauswahl steuert die Locale (inkl. RTL für Arabisch etc.),
-          // unabhängig von DevicePreview (nur für Geräte-Vorschau im Debug-Modus).
+          // Die App-eigene Sprachauswahl steuert die Locale, unabhängig von einer
+          // allfälligen Geräte-Vorschau (DevicePreview, siehe main()).
           locale: locale,
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
