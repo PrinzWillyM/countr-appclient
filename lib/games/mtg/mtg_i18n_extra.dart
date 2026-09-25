@@ -11,7 +11,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Commander-Schaden: Ziehe das Schild-Abzeichen auf einen anderen Spieler und passe den Schaden dort mit − / + an (zieht auch Leben ab).\n'
         '• Steuer-Knopf neben dem Schild: +2 Commander-Steuer. Gedrückt halten für −2.\n'
         '• Das Regler-Symbol öffnet Farbe, Marken (Gift, Energie, Erfahrung) und Commander-Schaden.\n'
-        '• Der Knopf in der Mitte öffnet das Menü: Neustart, Einstellungen (Spieler, Anordnung, Startleben, Zug-Timer, Missed Triggers), Wer beginnt? und Würfel.\n'
+        '• Der Knopf in der Mitte öffnet das Menü: Einstellungen (Spieler, Anordnung, Startleben, Zug-Timer, Missed Triggers), Wer beginnt? und Würfel.\n'
         '• Ein Spieler ist raus bei 0 Leben, 10 Giftmarken oder 21 Schaden von einem Commander.',
   },
   'en': {
@@ -24,7 +24,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Commander damage: drag the shield badge onto another player and adjust the damage there with − / + (also reduces life).\n'
         '• Tax button next to the shield: +2 commander tax. Hold for −2.\n'
         '• The sliders icon opens color, counters (poison, energy, experience) and commander damage.\n'
-        '• The center button opens the menu: restart, settings (players, layout, starting life, turn timer, missed triggers), high roll and dice.\n'
+        '• The center button opens the menu: settings (players, layout, starting life, turn timer, missed triggers), high roll and dice.\n'
         '• A player is out at 0 life, 10 poison counters or 21 damage from a single commander.',
   },
   'fr': {
@@ -37,7 +37,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Blessures de commandant : faites glisser le badge bouclier sur un autre joueur et ajustez avec − / + (réduit aussi les points de vie).\n'
         '• Bouton de taxe à côté du bouclier : +2 de taxe de commandant. Maintenez pour −2.\n'
         '• L\'icône de réglages ouvre couleur, marqueurs (poison, énergie, expérience) et blessures de commandant.\n'
-        '• Le bouton central ouvre le menu : recommencer, réglages (joueurs, disposition, points de vie, minuteur, déclenchements oubliés), qui commence et dés.\n'
+        '• Le bouton central ouvre le menu : réglages (joueurs, disposition, points de vie, minuteur, déclenchements oubliés), qui commence et dés.\n'
         '• Un joueur est éliminé à 0 point de vie, 10 marqueurs poison ou 21 blessures d\'un même commandant.',
   },
   'it': {
@@ -50,7 +50,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Danno del comandante: trascina lo scudo su un altro giocatore e regola il danno con − / + (riduce anche i punti vita).\n'
         '• Pulsante tassa accanto allo scudo: +2 tassa del comandante. Tieni premuto per −2.\n'
         '• L\'icona impostazioni apre colore, segnalini (veleno, energia, esperienza) e danno del comandante.\n'
-        '• Il pulsante centrale apre il menu: ricomincia, impostazioni (giocatori, disposizione, punti vita, timer, inneschi dimenticati), chi inizia e dadi.\n'
+        '• Il pulsante centrale apre il menu: impostazioni (giocatori, disposizione, punti vita, timer, inneschi dimenticati), chi inizia e dadi.\n'
         '• Un giocatore è eliminato a 0 punti vita, 10 segnalini veleno o 21 danni da un singolo comandante.',
   },
   'es': {
@@ -63,7 +63,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Daño de comandante: arrastra el escudo sobre otro jugador y ajusta el daño con − / + (también resta vidas).\n'
         '• Botón de impuesto junto al escudo: +2 de impuesto de comandante. Mantén pulsado para −2.\n'
         '• El icono de ajustes abre color, contadores (veneno, energía, experiencia) y daño de comandante.\n'
-        '• El botón central abre el menú: reiniciar, ajustes (jugadores, disposición, vidas, temporizador, disparos olvidados), quién empieza y dados.\n'
+        '• El botón central abre el menú: ajustes (jugadores, disposición, vidas, temporizador, disparos olvidados), quién empieza y dados.\n'
         '• Un jugador queda eliminado con 0 vidas, 10 contadores de veneno o 21 de daño de un mismo comandante.',
   },
   'pt': {
@@ -76,7 +76,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Dano de comandante: arraste o escudo sobre outro jogador e ajuste o dano com − / + (também reduz a vida).\n'
         '• Botão de taxa ao lado do escudo: +2 de taxa de comandante. Segure para −2.\n'
         '• O ícone de ajustes abre cor, marcadores (veneno, energia, experiência) e dano de comandante.\n'
-        '• O botão central abre o menu: reiniciar, configurações (jogadores, disposição, vida inicial, cronômetro, gatilhos esquecidos), quem começa e dados.\n'
+        '• O botão central abre o menu: configurações (jogadores, disposição, vida inicial, cronômetro, gatilhos esquecidos), quem começa e dados.\n'
         '• Um jogador é eliminado com 0 de vida, 10 marcadores de veneno ou 21 de dano de um único comandante.',
   },
   'nl': {
@@ -89,7 +89,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Commander-schade: sleep het schild naar een andere speler en pas de schade daar aan met − / + (verlaagt ook het leven).\n'
         '• Belastingknop naast het schild: +2 commander-belasting. Houd vast voor −2.\n'
         '• Het instellingen-icoon opent kleur, markers (gif, energie, ervaring) en commander-schade.\n'
-        '• De knop in het midden opent het menu: opnieuw, instellingen (spelers, indeling, startleven, beurttimer, gemiste triggers), wie begint en dobbelstenen.\n'
+        '• De knop in het midden opent het menu: instellingen (spelers, indeling, startleven, beurttimer, gemiste triggers), wie begint en dobbelstenen.\n'
         '• Een speler ligt eruit bij 0 leven, 10 gifmarkers of 21 schade van één commander.',
   },
   'pl': {
@@ -102,7 +102,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Obrażenia dowódcy: przeciągnij tarczę na innego gracza i ustaw obrażenia przyciskami − / + (odejmuje też życie).\n'
         '• Przycisk podatku obok tarczy: +2 podatku dowódcy. Przytrzymaj dla −2.\n'
         '• Ikona ustawień otwiera kolor, znaczniki (trucizna, energia, doświadczenie) i obrażenia dowódcy.\n'
-        '• Przycisk na środku otwiera menu: od nowa, ustawienia (gracze, układ, życie, licznik tury, pominięte wyzwalacze), kto zaczyna i kości.\n'
+        '• Przycisk na środku otwiera menu: ustawienia (gracze, układ, życie, licznik tury, pominięte wyzwalacze), kto zaczyna i kości.\n'
         '• Gracz odpada przy 0 życia, 10 znacznikach trucizny lub 21 obrażeniach od jednego dowódcy.',
   },
   'tr': {
@@ -115,7 +115,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Komutan hasarı: kalkan rozetini başka bir oyuncuya sürükle ve hasarı orada − / + ile ayarla (candan da düşer).\n'
         '• Kalkanın yanındaki vergi düğmesi: +2 komutan vergisi. −2 için basılı tut.\n'
         '• Ayarlar simgesi renk, sayaçlar (zehir, enerji, deneyim) ve komutan hasarını açar.\n'
-        '• Ortadaki düğme menüyü açar: yeniden başlat, ayarlar (oyuncular, düzen, can, zamanlayıcı, kaçırılan tetikler), kim başlar ve zar.\n'
+        '• Ortadaki düğme menüyü açar: ayarlar (oyuncular, düzen, can, zamanlayıcı, kaçırılan tetikler), kim başlar ve zar.\n'
         '• Bir oyuncu 0 can, 10 zehir sayacı veya tek bir komutandan 21 hasarla elenir.',
   },
   'id': {
@@ -128,7 +128,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Kerusakan komandan: seret lencana perisai ke pemain lain dan atur kerusakan dengan − / + (juga mengurangi nyawa).\n'
         '• Tombol pajak di samping perisai: +2 pajak komandan. Tahan untuk −2.\n'
         '• Ikon pengaturan membuka warna, penanda (racun, energi, pengalaman) dan kerusakan komandan.\n'
-        '• Tombol tengah membuka menu: mulai ulang, pengaturan (pemain, tata letak, nyawa awal, pengatur waktu, pemicu terlewat), siapa mulai dan dadu.\n'
+        '• Tombol tengah membuka menu: pengaturan (pemain, tata letak, nyawa awal, pengatur waktu, pemicu terlewat), siapa mulai dan dadu.\n'
         '• Pemain kalah pada 0 nyawa, 10 penanda racun, atau 21 kerusakan dari satu komandan.',
   },
   'sv': {
@@ -141,7 +141,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Commander-skada: dra sköldmärket till en annan spelare och justera skadan där med − / + (drar även liv).\n'
         '• Skatteknappen bredvid skölden: +2 commander-skatt. Håll inne för −2.\n'
         '• Inställningsikonen öppnar färg, markörer (gift, energi, erfarenhet) och commander-skada.\n'
-        '• Knappen i mitten öppnar menyn: starta om, inställningar (spelare, layout, startliv, turtimer, missade triggers), vem börjar och tärningar.\n'
+        '• Knappen i mitten öppnar menyn: inställningar (spelare, layout, startliv, turtimer, missade triggers), vem börjar och tärningar.\n'
         '• En spelare är ute vid 0 liv, 10 giftmarkörer eller 21 skada från en och samma commander.',
   },
   'hr': {
@@ -154,7 +154,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Šteta zapovjednika: povuci značku štita na drugog igrača i podesi štetu s − / + (oduzima i život).\n'
         '• Gumb poreza pokraj štita: +2 poreza zapovjednika. Drži za −2.\n'
         '• Ikona postavki otvara boju, žetone (otrov, energija, iskustvo) i štetu zapovjednika.\n'
-        '• Gumb u sredini otvara izbornik: ponovo, postavke (igrači, raspored, život, mjerač poteza, propušteni okidači), tko počinje i kockice.\n'
+        '• Gumb u sredini otvara izbornik: postavke (igrači, raspored, život, mjerač poteza, propušteni okidači), tko počinje i kockice.\n'
         '• Igrač ispada s 0 života, 10 žetona otrova ili 21 štete od jednog zapovjednika.',
   },
   'ru': {
@@ -167,7 +167,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• Урон командира: перетащите значок щита на другого игрока и настройте урон кнопками − / + (жизни тоже уменьшаются).\n'
         '• Кнопка налога рядом со щитом: +2 налога командира. Удерживайте для −2.\n'
         '• Значок настроек открывает цвет, счётчики (яд, энергия, опыт) и урон командира.\n'
-        '• Кнопка в центре открывает меню: заново, настройки (игроки, расположение, жизни, таймер хода, пропущенные триггеры), кто первый и кубики.\n'
+        '• Кнопка в центре открывает меню: настройки (игроки, расположение, жизни, таймер хода, пропущенные триггеры), кто первый и кубики.\n'
         '• Игрок выбывает при 0 жизней, 10 счётчиках яда или 21 уроне от одного командира.',
   },
   'ja': {
@@ -180,7 +180,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• 統率者ダメージ：盾バッジを別のプレイヤーにドラッグし、− / + でダメージを調整します（ライフも減ります）。\n'
         '• 盾の横の税ボタン：統率者税 +2。長押しで −2。\n'
         '• 設定アイコンで色、カウンター（毒・エネルギー・経験）、統率者ダメージを開きます。\n'
-        '• 中央のボタンでメニュー：リスタート、設定（プレイヤー、レイアウト、初期ライフ、ターンタイマー、誘発忘れ）、先攻決め、ダイス。\n'
+        '• 中央のボタンでメニュー：設定（プレイヤー、レイアウト、初期ライフ、ターンタイマー、誘発忘れ）、先攻決め、ダイス。\n'
         '• ライフ0、毒カウンター10個、または1体の統率者から21点のダメージで敗北です。',
   },
   'ko': {
@@ -193,7 +193,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• 커맨더 피해: 방패 배지를 다른 플레이어에게 드래그하고 − / + 로 피해를 조정하세요 (라이프도 줄어듭니다).\n'
         '• 방패 옆 세금 버튼: 커맨더 세금 +2. 길게 누르면 −2.\n'
         '• 설정 아이콘으로 색상, 카운터(독, 에너지, 경험), 커맨더 피해를 엽니다.\n'
-        '• 가운데 버튼은 메뉴를 엽니다: 다시 시작, 설정(플레이어, 배치, 시작 라이프, 턴 타이머, 놓친 유발), 선공 정하기, 주사위.\n'
+        '• 가운데 버튼은 메뉴를 엽니다: 설정(플레이어, 배치, 시작 라이프, 턴 타이머, 놓친 유발), 선공 정하기, 주사위.\n'
         '• 라이프 0, 독 카운터 10개 또는 한 커맨더에게 받은 피해 21이면 탈락합니다.',
   },
   'zh': {
@@ -206,7 +206,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• 指挥官伤害：把盾牌徽章拖到另一名玩家上，然后用 − / + 调整伤害（同时扣除生命）。\n'
         '• 盾牌旁的税按钮：指挥官税 +2。长按 −2。\n'
         '• 设置图标可打开颜色、指示物（中毒、能量、经验）和指挥官伤害。\n'
-        '• 中间的按钮打开菜单：重新开始、设置（玩家、布局、初始生命、回合计时器、遗漏触发）、谁先手和骰子。\n'
+        '• 中间的按钮打开菜单：设置（玩家、布局、初始生命、回合计时器、遗漏触发）、谁先手和骰子。\n'
         '• 生命为 0、10 个中毒指示物或受到同一指挥官 21 点伤害时出局。',
   },
   'hi': {
@@ -219,7 +219,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• कमांडर डैमेज: ढाल बैज को दूसरे खिलाड़ी पर खींचें और − / + से डैमेज बदलें (जीवन भी घटता है)।\n'
         '• ढाल के पास टैक्स बटन: +2 कमांडर टैक्स। −2 के लिए दबाकर रखें।\n'
         '• सेटिंग्स आइकन रंग, काउंटर (विष, ऊर्जा, अनुभव) और कमांडर डैमेज खोलता है।\n'
-        '• बीच का बटन मेनू खोलता है: फिर से शुरू, सेटिंग्स (खिलाड़ी, लेआउट, जीवन, टर्न टाइमर, छूटे ट्रिगर), कौन शुरू करेगा और पासे।\n'
+        '• बीच का बटन मेनू खोलता है: सेटिंग्स (खिलाड़ी, लेआउट, जीवन, टर्न टाइमर, छूटे ट्रिगर), कौन शुरू करेगा और पासे।\n'
         '• 0 जीवन, 10 विष काउंटर या एक ही कमांडर से 21 डैमेज पर खिलाड़ी बाहर हो जाता है।',
   },
   'bn': {
@@ -232,7 +232,7 @@ const Map<String, Map<String, String>> mtgExtraTranslations = {
         '• কমান্ডার ড্যামেজ: ঢাল ব্যাজ অন্য খেলোয়াড়ের উপর টেনে আনুন এবং − / + দিয়ে ড্যামেজ ঠিক করুন (জীবনও কমে)।\n'
         '• ঢালের পাশে ট্যাক্স বোতাম: +2 কমান্ডার ট্যাক্স। −2 এর জন্য চেপে ধরে রাখুন।\n'
         '• সেটিংস আইকন রং, কাউন্টার (বিষ, শক্তি, অভিজ্ঞতা) এবং কমান্ডার ড্যামেজ খোলে।\n'
-        '• মাঝের বোতাম মেনু খোলে: আবার শুরু, সেটিংস (খেলোয়াড়, বিন্যাস, জীবন, টার্ন টাইমার, মিস করা ট্রিগার), কে শুরু করবে এবং পাশা।\n'
+        '• মাঝের বোতাম মেনু খোলে: সেটিংস (খেলোয়াড়, বিন্যাস, জীবন, টার্ন টাইমার, মিস করা ট্রিগার), কে শুরু করবে এবং পাশা।\n'
         '• ০ জীবন, ১০টি বিষ কাউন্টার বা একই কমান্ডার থেকে ২১ ড্যামেজে খেলোয়াড় বাদ পড়ে।',
   },
 };

@@ -25,6 +25,7 @@ class MagicTheGatheringGame extends StatefulWidget {
 class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
   static const String gameId = 'game_title_mtg';
   static const Duration _rollAnimation = Duration(seconds: 1);
+  static const Color _bgColor = Color(0xFF222629); // wie in allen anderen Modulen
 
   Color get accent => widget.themeColor ?? const Color(0xFFEBCB63);
 
@@ -402,9 +403,6 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
               showMtgDiceDialog(context, accent);
             }),
         MtgMenuItem(key: 'settings', icon: Icons.settings, label: mtgT('settings'), color: kMtgPlayerColors[4], onTap: _openSettings),
-        MtgMenuItem(key: 'restart', icon: Icons.refresh, label: mtgT('restart'), color: kMtgPlayerColors[0], onTap: _restart),
-        MtgMenuItem(key: 'help', icon: Icons.help_outline, label: mtgT('help'), color: kMtgPlayerColors[3], onTap: _showHelp),
-        MtgMenuItem(key: 'exit', icon: Icons.logout, label: mtgT('exit'), color: Colors.white, onTap: () => Navigator.of(context).maybePop()),
       ];
 
   Widget _buildTile(int index) {
@@ -443,7 +441,7 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) return const Scaffold(backgroundColor: Colors.black);
+    if (!_ready) return const Scaffold(backgroundColor: _bgColor);
     return PopScope(
       // Zurück-Geste schliesst zuerst das Menü bzw. bricht "Wer beginnt?" ab
       canPop: !_menuOpen && _rollPhase.isEmpty,
@@ -458,8 +456,21 @@ class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: _bgColor,
+          // Gleiche App-Bar wie in den anderen Modulen
+          appBar: AppBar(
+            // Schrumpft auf schmalen Handys statt abgeschnitten zu werden
+            title: const FittedBox(fit: BoxFit.scaleDown, child: Text('Magic: The Gathering')),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            foregroundColor: accent,
+            actions: [
+              IconButton(key: const ValueKey('mtg_restart'), icon: const Icon(Icons.refresh), onPressed: _restart),
+              IconButton(key: const ValueKey('mtg_help'), icon: const Icon(Icons.help_outline), onPressed: _showHelp),
+            ],
+          ),
           body: SafeArea(
+            top: false,
             child: LayoutBuilder(builder: (context, box) {
               const pad = 6.0, gap = 6.0;
               // Menü-Knopf auf der Kachelgrenze nahe der Mitte (nie mitten auf einer Lebensanzeige)

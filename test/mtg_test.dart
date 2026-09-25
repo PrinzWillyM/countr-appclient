@@ -215,15 +215,28 @@ void main() {
       expect(find.byKey(const ValueKey('mtg_trigger_0_0')), findsOneWidget);
     });
 
+    testWidgets('looks like the other modules: app bar with title, restart, help and the common grey background', (tester) async {
+      await pumpGame(tester);
+      expect(find.widgetWithText(AppBar, 'Magic: The Gathering'), findsOneWidget);
+      expect(find.byKey(const ValueKey('mtg_restart')), findsOneWidget);
+      expect(find.byKey(const ValueKey('mtg_help')), findsOneWidget);
+      final scaffold = tester.widget<Scaffold>(find.ancestor(of: find.byType(AppBar), matching: find.byType(Scaffold)));
+      expect(scaffold.backgroundColor, const Color(0xFF222629));
+
+      await tester.tap(find.byKey(const ValueKey('mtg_help')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+    });
+
     testWidgets('menu opens as a list of buttons and closes with its X button', (tester) async {
       await pumpGame(tester);
       await tester.tap(find.byKey(const ValueKey('mtg_menu_button')));
       await tester.pumpAndSettle();
-      for (final key in ['high_roll', 'dice', 'settings', 'restart', 'help', 'exit']) {
+      for (final key in ['high_roll', 'dice', 'settings']) {
         expect(find.byKey(ValueKey('mtg_menu_$key')), findsOneWidget);
       }
       // Einträge stehen untereinander in der Mitte
-      final xs = {for (final key in ['high_roll', 'settings', 'exit']) tester.getCenter(find.byKey(ValueKey('mtg_menu_$key'))).dx.round()};
+      final xs = {for (final key in ['high_roll', 'dice', 'settings']) tester.getCenter(find.byKey(ValueKey('mtg_menu_$key'))).dx.round()};
       expect(xs.length, 1);
 
       await tester.tap(find.byKey(const ValueKey('mtg_menu_close')));
@@ -344,9 +357,8 @@ void main() {
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('mtg_zone_2_plus')));
-      await tester.tap(find.byKey(const ValueKey('mtg_menu_button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('mtg_menu_restart')));
+      // Neustart sitzt wie in den anderen Modulen oben rechts in der App-Bar
+      await tester.tap(find.byKey(const ValueKey('mtg_restart')));
       await tester.pumpAndSettle();
       expect((await _savedPlayer(2))['life'], 30);
     });
