@@ -30,10 +30,17 @@ class PokeSlot {
 
   void clearAll() {
     damage = 0;
+    clearConditions();
+  }
+
+  // Beim Wechsel auf die Bank verliert ein Pokémon alle Speziellen Zustände (inkl. Gift & Verbrennung)
+  void clearConditions() {
     isPoisoned = false;
     isBurned = false;
     condition = SpecialCondition.none;
   }
+
+  static bool isDamageToken(String token) => token == '10' || token == '50' || token == '100';
 
   Map<String, dynamic> toJson() => {
         'damage': damage,
@@ -126,9 +133,9 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
   // --- STATE ---
   // Sprache: immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
   String get _currentLang => appLocaleNotifier.value.languageCode;
-  late PokePlayer player1;
-  late PokePlayer player2;
-  int turnCounter = 1;
+  // Direkt initialisiert, damit der erste Frame beim Fortsetzen (asynchrones Laden) nicht crasht
+  late PokePlayer player1 = PokePlayer(_t('you'));
+  late PokePlayer player2 = PokePlayer(_t('opponent'));
 
   final TextEditingController _renameController = TextEditingController();
 
@@ -138,20 +145,26 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
     if (widget.resume) {
       _loadSavedState();
     } else {
-      _resetGame();
+      _persist();
     }
+  }
+
+  @override
+  void dispose() {
+    _renameController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSavedState() async {
     final saved = await GamePersistence.load(gameId);
-    if (saved == null || !mounted) {
+    if (!mounted) return;
+    if (saved == null) {
       _resetGame();
       return;
     }
     setState(() {
       player1 = PokePlayer.fromJson(Map<String, dynamic>.from(saved['player1'] as Map));
       player2 = PokePlayer.fromJson(Map<String, dynamic>.from(saved['player2'] as Map));
-      turnCounter = saved['turnCounter'] as int? ?? 1;
     });
   }
 
@@ -159,7 +172,6 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
     GamePersistence.save(gameId, {
       'player1': player1.toJson(),
       'player2': player2.toJson(),
-      'turnCounter': turnCounter,
     });
   }
 
@@ -167,7 +179,6 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
     setState(() {
       player1 = PokePlayer(_t('you'));
       player2 = PokePlayer(_t('opponent'));
-      turnCounter = 1;
     });
     _persist();
   }
@@ -181,7 +192,7 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
         'active': 'Aktiv', 'bench': 'Bank', 'clear': 'Leeren',
         'rename_title': 'Name ändern', 'cancel': 'ABBRECHEN', 'save': 'SPEICHERN',
         'swap_active': 'Einwechseln', 'manage_prizes': 'Preiskarten', 'back': 'ZURÜCK',
-        'supporter': 'Supporter', 'retreat': 'Rückzug', 'end_turn': 'Zug Beenden', 'turn': 'Zug',
+        'supporter': 'Supporter', 'retreat': 'Rückzug', 'end_turn': 'Zug Beenden', 'turn': 'Zug', 'player_wins': '{name} gewinnt!',
         'rules_text': 'Der perfekte TCG Begleiter:\n\n• Drag & Drop: Ziehe Schadens- oder Statusmarken aus der Mitte auf ein Pokémon.\n• Bearbeiten: Tippe auf ein Pokémon, um Marken anzupassen.\n• Einwechseln: Tippe auf ein Bank-Pokémon, um es mit dem Aktiven zu tauschen.\n• Once-per-Game: Tippe auf [GX] / [VSTAR], um sie zu verbrauchen.\n• Zug Aktionen: Markiere gespielte Unterstützer oder genutzten Rückzug.',
       },
       'en': {
@@ -190,27 +201,27 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
         'active': 'Active', 'bench': 'Bench', 'clear': 'Clear All',
         'rename_title': 'Rename', 'cancel': 'CANCEL', 'save': 'SAVE',
         'swap_active': 'Switch', 'manage_prizes': 'Prizes', 'back': 'BACK',
-        'supporter': 'Supporter', 'retreat': 'Retreat', 'end_turn': 'End Turn', 'turn': 'Turn',
+        'supporter': 'Supporter', 'retreat': 'Retreat', 'end_turn': 'End Turn', 'turn': 'Turn', 'player_wins': '{name} wins!',
         'rules_text': 'The perfect TCG companion:\n\n• Drag & Drop: Drag damage or status tokens from the center onto a Pokémon.\n• Edit: Tap a Pokémon to adjust counters.\n• Switch: Tap a benched Pokémon to switch it with the active one.\n• Once-per-Game: Tap [GX] / [VSTAR] to mark them as used.\n• Turn Actions: Track played supporters or used retreats.',
       },
       'fr': {
-        'title': 'Pokémon TCG', 'rules': 'Règles', 'ok': 'COMPRIS', 'you': 'Toi', 'opponent': 'Adversaire', 'prizes': 'Prix', 'active': 'Actif', 'bench': 'Banc', 'clear': 'Vider', 'rename_title': 'Renommer', 'cancel': 'ANNULER', 'save': 'SAUVER', 'swap_active': 'Remplacer', 'manage_prizes': 'Prix', 'back': 'RETOUR', 'supporter': 'Supporter', 'retreat': 'Retraite', 'end_turn': 'Fin de tour', 'turn': 'Tour', 'rules_text': 'Le compagnon TCG parfait :\n\n• Glisser-déposer : Glissez les marqueurs de dégâts ou de statut du centre vers un Pokémon.\n• Modifier : Appuyez sur un Pokémon pour ajuster les marqueurs.\n• Remplacer : Appuyez sur un Pokémon du banc pour l\'échanger avec l\'actif.\n• Une fois par partie : Appuyez sur [GX] / [VSTAR] pour les marquer comme utilisés.\n• Actions de tour : Suivez les supporters joués ou les retraites utilisées.'
+        'title': 'Pokémon TCG', 'rules': 'Règles', 'ok': 'COMPRIS', 'you': 'Toi', 'opponent': 'Adversaire', 'prizes': 'Prix', 'active': 'Actif', 'bench': 'Banc', 'clear': 'Vider', 'rename_title': 'Renommer', 'cancel': 'ANNULER', 'save': 'SAUVER', 'swap_active': 'Remplacer', 'manage_prizes': 'Prix', 'back': 'RETOUR', 'supporter': 'Supporter', 'retreat': 'Retraite', 'end_turn': 'Fin de tour', 'turn': 'Tour', 'player_wins': '{name} gagne !', 'rules_text': 'Le compagnon TCG parfait :\n\n• Glisser-déposer : Glissez les marqueurs de dégâts ou de statut du centre vers un Pokémon.\n• Modifier : Appuyez sur un Pokémon pour ajuster les marqueurs.\n• Remplacer : Appuyez sur un Pokémon du banc pour l\'échanger avec l\'actif.\n• Une fois par partie : Appuyez sur [GX] / [VSTAR] pour les marquer comme utilisés.\n• Actions de tour : Suivez les supporters joués ou les retraites utilisées.'
       },
-      'it': { 'title': 'Pokémon TCG', 'rules': 'Regole', 'ok': 'CAPITO', 'you': 'Tu', 'opponent': 'Avversario', 'prizes': 'Premi', 'active': 'Attivo', 'bench': 'Panchina', 'clear': 'Svuota', 'swap_active': 'Scambia', 'manage_prizes': 'Premi', 'back': 'INDIETRO', 'rename_title': 'Rinomina', 'cancel': 'ANNULLA', 'save': 'SALVA', 'supporter': 'Aiuto', 'retreat': 'Ritirata', 'end_turn': 'Fine Turno', 'turn': 'Turno', 'rules_text': 'Il compagno perfetto per il TCG:\n\n• Trascina e rilascia: Trascina i segnalini di danno o stato dal centro su un Pokémon.\n• Modifica: Tocca un Pokémon per regolare i segnalini.\n• Scambia: Tocca un Pokémon in panchina per scambiarlo con quello attivo.\n• Una volta per partita: Tocca [GX] / [VSTAR] per segnarli come usati.\n• Azioni di turno: Tieni traccia dei supporter giocati o delle ritirate usate.' },
-      'es': { 'title': 'Pokémon TCG', 'rules': 'Reglas', 'ok': 'ENTENDIDO', 'you': 'Tú', 'opponent': 'Rival', 'prizes': 'Premios', 'active': 'Activo', 'bench': 'Banca', 'clear': 'Limpiar', 'swap_active': 'Cambiar', 'manage_prizes': 'Premios', 'back': 'VOLVER', 'rename_title': 'Renombrar', 'cancel': 'CANCELAR', 'save': 'GUARDAR', 'supporter': 'Partidario', 'retreat': 'Retirada', 'end_turn': 'Fin de turno', 'turn': 'Turno', 'rules_text': 'El compañero perfecto para el TCG:\n\n• Arrastrar y soltar: Arrastra los contadores de daño o estado desde el centro hacia un Pokémon.\n• Editar: Toca un Pokémon para ajustar los contadores.\n• Cambiar: Toca un Pokémon en la banca para intercambiarlo con el activo.\n• Una vez por partida: Toca [GX] / [VSTAR] para marcarlos como usados.\n• Acciones de turno: Registra los partidarios jugados o las retiradas usadas.' },
-      'pt': { 'title': 'Pokémon TCG', 'rules': 'Regras', 'ok': 'ENTENDIDO', 'you': 'Você', 'opponent': 'Oponente', 'prizes': 'Prêmios', 'active': 'Ativo', 'bench': 'Banco', 'clear': 'Limpar', 'swap_active': 'Trocar', 'manage_prizes': 'Prêmios', 'back': 'VOLTAR', 'rename_title': 'Renomear', 'cancel': 'CANCELAR', 'save': 'SALVAR', 'supporter': 'Apoiador', 'retreat': 'Recuar', 'end_turn': 'Fim do turno', 'turn': 'Turno', 'rules_text': 'O companheiro perfeito para o TCG:\n\n• Arrastar e soltar: Arraste os marcadores de dano ou status do centro para um Pokémon.\n• Editar: Toque em um Pokémon para ajustar os marcadores.\n• Trocar: Toque em um Pokémon no banco para trocá-lo com o ativo.\n• Uma vez por partida: Toque em [GX] / [VSTAR] para marcá-los como usados.\n• Ações de turno: Acompanhe os apoiadores jogados ou recuos usados.' },
-      'nl': { 'title': 'Pokémon TCG', 'rules': 'Regels', 'ok': 'BEGREPEN', 'you': 'Jij', 'opponent': 'Tegenstander', 'prizes': 'Prijzen', 'active': 'Actief', 'bench': 'Bank', 'clear': 'Wissen', 'swap_active': 'Wissel', 'manage_prizes': 'Prijzen', 'back': 'TERUG', 'rename_title': 'Wijzigen', 'cancel': 'ANNULEREN', 'save': 'OPSLAAN', 'supporter': 'Supporter', 'retreat': 'Terugtrekken', 'end_turn': 'Einde beurt', 'turn': 'Beurt', 'rules_text': 'De perfecte TCG-metgezel:\n\n• Slepen en neerzetten: Sleep schade- of statusmarkers vanuit het midden naar een Pokémon.\n• Bewerken: Tik op een Pokémon om markers aan te passen.\n• Wisselen: Tik op een Pokémon op de bank om deze te wisselen met de actieve.\n• Eén keer per potje: Tik op [GX] / [VSTAR] om ze als gebruikt te markeren.\n• Beurtacties: Houd bij welke supporters zijn gespeeld en welke terugtrekkingen zijn gebruikt.' },
-      'pl': { 'title': 'Pokémon TCG', 'rules': 'Zasady', 'ok': 'ZROZUMIAŁEM', 'you': 'Ty', 'opponent': 'Przeciwnik', 'prizes': 'Nagrody', 'active': 'Aktywny', 'bench': 'Ławka', 'clear': 'Wyczyść', 'swap_active': 'Zmień', 'manage_prizes': 'Nagrody', 'back': 'WRÓĆ', 'rename_title': 'Zmień nazwę', 'cancel': 'ANULUJ', 'save': 'ZAPISZ', 'supporter': 'Wsparcie', 'retreat': 'Wycofanie', 'end_turn': 'Koniec tury', 'turn': 'Tura', 'rules_text': 'Idealny towarzysz TCG:\n\n• Przeciągnij i upuść: Przeciągnij znaczniki obrażeń lub statusu ze środka na Pokémona.\n• Edytuj: Dotknij Pokémona, aby dostosować znaczniki.\n• Zmień: Dotknij Pokémona na ławce, aby zamienić go z aktywnym.\n• Raz na grę: Dotknij [GX] / [VSTAR], aby oznaczyć jako użyte.\n• Akcje tury: Śledź zagranych supporterów i użyte wycofania.' },
-      'tr': { 'title': 'Pokémon TCG', 'rules': 'Kurallar', 'ok': 'ANLADIM', 'you': 'Sen', 'opponent': 'Rakip', 'prizes': 'Ödüller', 'active': 'Aktif', 'bench': 'Yedek', 'clear': 'Temizle', 'swap_active': 'Değiştir', 'manage_prizes': 'Ödüller', 'back': 'GERİ', 'rename_title': 'İsim Değiştir', 'cancel': 'İPTAL', 'save': 'KAYDET', 'supporter': 'Destekçi', 'retreat': 'Geri Çekil', 'end_turn': 'Turu Bitir', 'turn': 'Tur', 'rules_text': 'Mükemmel TCG yoldaşı:\n\n• Sürükle & Bırak: Hasar veya durum jetonlarını ortadan bir Pokémon\'a sürükleyin.\n• Düzenle: Sayaçları ayarlamak için bir Pokémon\'a dokunun.\n• Değiştir: Aktif olanla değiştirmek için yedekteki bir Pokémon\'a dokunun.\n• Oyun başına bir kez: Kullanıldı olarak işaretlemek için [GX] / [VSTAR]\'a dokunun.\n• Tur aksiyonları: Oynanan destekçileri ve kullanılan geri çekilmeleri takip edin.' },
-      'id': { 'title': 'Pokémon TCG', 'rules': 'Aturan', 'ok': 'MENGERTI', 'you': 'Kamu', 'opponent': 'Lawan', 'prizes': 'Hadiah', 'active': 'Aktif', 'bench': 'Cadangan', 'clear': 'Bersihkan', 'swap_active': 'Tukar', 'manage_prizes': 'Hadiah', 'back': 'KEMBALI', 'rename_title': 'Ubah Nama', 'cancel': 'BATAL', 'save': 'SIMPAN', 'supporter': 'Pendukung', 'retreat': 'Mundur', 'end_turn': 'Akhiri Giliran', 'turn': 'Giliran', 'rules_text': 'Pendamping TCG yang sempurna:\n\n• Seret & Lepas: Seret token kerusakan atau status dari tengah ke Pokémon.\n• Edit: Ketuk Pokémon untuk menyesuaikan penghitung.\n• Tukar: Ketuk Pokémon di bangku cadangan untuk menukarnya dengan yang aktif.\n• Sekali per game: Ketuk [GX] / [VSTAR] untuk menandainya sebagai terpakai.\n• Aksi giliran: Lacak pendukung yang dimainkan atau mundur yang digunakan.' },
-      'sv': { 'title': 'Pokémon TCG', 'rules': 'Regler', 'ok': 'FÖRSTÅTT', 'you': 'Du', 'opponent': 'Motståndare', 'prizes': 'Priser', 'active': 'Aktiv', 'bench': 'Bänk', 'clear': 'Rensa', 'swap_active': 'Byt', 'manage_prizes': 'Priser', 'back': 'TILLBAKA', 'rename_title': 'Byt namn', 'cancel': 'AVBRYT', 'save': 'SPARA', 'supporter': 'Supporter', 'retreat': 'Reträtt', 'end_turn': 'Avsluta tur', 'turn': 'Tur', 'rules_text': 'Den perfekta TCG-följeslagaren:\n\n• Dra och släpp: Dra skade- eller statusmarkörer från mitten till en Pokémon.\n• Redigera: Tryck på en Pokémon för att justera markörer.\n• Byt: Tryck på en Pokémon på bänken för att byta den mot den aktiva.\n• En gång per match: Tryck på [GX] / [VSTAR] för att markera dem som använda.\n• Turåtgärder: Håll koll på spelade supportrar och använda reträtter.' },
-      'hr': { 'title': 'Pokémon TCG', 'rules': 'Pravila', 'ok': 'RAZUMIJEM', 'you': 'Ti', 'opponent': 'Protivnik', 'prizes': 'Nagrade', 'active': 'Aktivni', 'bench': 'Klupa', 'clear': 'Očisti', 'swap_active': 'Zamijeni', 'manage_prizes': 'Nagrade', 'back': 'NATRAG', 'rename_title': 'Promijeni ime', 'cancel': 'ODUSTANI', 'save': 'SPREMI', 'supporter': 'Podrška', 'retreat': 'Povlačenje', 'end_turn': 'Kraj Poteza', 'turn': 'Potez', 'rules_text': 'Savršeni TCG pratitelj:\n\n• Povuci i ispusti: Povuci žetone oštećenja ili statusa iz sredine na Pokémona.\n• Uredi: Dodirni Pokémona za prilagodbu žetona.\n• Zamijeni: Dodirni Pokémona na klupi da ga zamijeniš s aktivnim.\n• Jednom po igri: Dodirni [GX] / [VSTAR] da ih označiš kao iskorištene.\n• Radnje poteza: Prati odigrane podržavatelje i iskorištena povlačenja.' },
-      'ru': { 'title': 'Pokémon TCG', 'rules': 'Правила', 'ok': 'ПОНЯТНО', 'you': 'Вы', 'opponent': 'Соперник', 'prizes': 'Призы', 'active': 'Активный', 'bench': 'Скамья', 'clear': 'Очистить', 'swap_active': 'Сменить', 'manage_prizes': 'Призы', 'back': 'НАЗАД', 'rename_title': 'Переименовать', 'cancel': 'ОТМЕНА', 'save': 'СОХРАНИТЬ', 'supporter': 'Поддержка', 'retreat': 'Отступление', 'end_turn': 'Конец хода', 'turn': 'Ход', 'rules_text': 'Идеальный компаньон для ККИ:\n\n• Перетаскивание: Перетащите жетоны урона или статуса из центра на покемона.\n• Редактирование: Нажмите на покемона, чтобы настроить счётчики.\n• Замена: Нажмите на покемона на скамейке, чтобы поменять его местами с активным.\n• Один раз за игру: Нажмите [GX] / [VSTAR], чтобы отметить их как использованные.\n• Действия хода: Отслеживайте сыгранных саппортов и использованные отступления.' },
-      'ja': { 'title': 'Pokémon TCG', 'rules': 'ルール', 'ok': '了解', 'you': 'あなた', 'opponent': '相手', 'prizes': 'サイド', 'active': 'バトル場', 'bench': 'ベンチ', 'clear': 'クリア', 'swap_active': '入れ替え', 'manage_prizes': 'サイド', 'back': '戻る', 'rename_title': '名前を変更', 'cancel': 'キャンセル', 'save': '保存', 'supporter': 'サポート', 'retreat': 'にげる', 'end_turn': 'ターン終了', 'turn': 'ターン', 'rules_text': '最高のTCGパートナー：\n\n• ドラッグ＆ドロップ：中央のダメージ・状態マーカーをポケモンにドラッグします。\n• 編集：ポケモンをタップしてマーカーを調整します。\n• 交代：ベンチのポケモンをタップしてバトル場のポケモンと入れ替えます。\n• 1試合1回：[GX]／[VSTAR]をタップして使用済みにします。\n• ターンの操作：使用したサポートやにげるを記録します。' },
-      'ko': { 'title': 'Pokémon TCG', 'rules': '규칙', 'ok': '확인', 'you': '당신', 'opponent': '상대방', 'prizes': '프라이즈', 'active': '배틀필드', 'bench': '벤치', 'clear': '지우기', 'swap_active': '교체', 'manage_prizes': '프라이즈', 'back': '뒤로', 'rename_title': '이름 변경', 'cancel': '취소', 'save': '저장', 'supporter': '서포터', 'retreat': '후퇴', 'end_turn': '턴 종료', 'turn': '턴', 'rules_text': '완벽한 TCG 동반자:\n\n• 드래그 앤 드롭: 중앙의 데미지 또는 상태 토큰을 포켓몬 위로 드래그하세요.\n• 편집: 포켓몬을 탭하여 카운터를 조정하세요.\n• 교체: 벤치의 포켓몬을 탭하여 배틀필드의 포켓몬과 교체하세요.\n• 게임당 한 번: [GX] / [VSTAR]를 탭하여 사용됨으로 표시하세요.\n• 턴 액션: 사용한 서포터와 후퇴를 기록하세요.' },
-      'zh': { 'title': '宝可梦 TCG', 'rules': '规则', 'ok': '明白了', 'you': '你', 'opponent': '对手', 'prizes': '奖赏卡', 'active': '出战', 'bench': '备战区', 'clear': '清除', 'swap_active': '替换', 'manage_prizes': '奖赏卡', 'back': '返回', 'rename_title': '重命名', 'cancel': '取消', 'save': '保存', 'supporter': '支援者', 'retreat': '撤退', 'end_turn': '结束回合', 'turn': '回合', 'rules_text': '完美的集换式卡牌搭档：\n\n• 拖放：将中间的伤害或状态标记拖到宝可梦身上。\n• 编辑：点击宝可梦以调整标记。\n• 替换：点击备战区的宝可梦以与出战宝可梦互换。\n• 每场一次：点击[GX]／[VSTAR]将其标记为已使用。\n• 回合操作：记录已使用的支援者和已使用的撤退。' },
-      'hi': { 'title': 'Pokémon TCG', 'rules': 'नियम', 'ok': 'समझ गया', 'you': 'आप', 'opponent': 'प्रतिद्वंद्वी', 'prizes': 'इनाम', 'active': 'सक्रिय', 'bench': 'बेंच', 'clear': 'साफ़ करें', 'swap_active': 'बदलें', 'manage_prizes': 'इनाम', 'back': 'वापस', 'rename_title': 'नाम बदलें', 'cancel': 'रद्द करें', 'save': 'सहेजें', 'supporter': 'समर्थक', 'retreat': 'पीछे हटना', 'end_turn': 'बारी समाप्त', 'turn': 'बारी', 'rules_text': 'परफेक्ट TCG साथी:\n\n• ड्रैग एंड ड्रॉप: बीच से डैमेज या स्टेटस टोकन को किसी पोकेमॉन पर खींचें।\n• संपादित करें: काउंटर समायोजित करने के लिए किसी पोकेमॉन पर टैप करें।\n• बदलें: बेंच के पोकेमॉन को सक्रिय पोकेमॉन से बदलने के लिए उस पर टैप करें।\n• प्रति गेम एक बार: उन्हें उपयोग किया हुआ चिह्नित करने के लिए [GX] / [VSTAR] पर टैप करें।\n• बारी की क्रियाएं: खेले गए समर्थकों और उपयोग की गई वापसी को ट्रैक करें।' },
-      'bn': { 'title': 'Pokémon TCG', 'rules': 'নিয়ম', 'ok': 'বুঝেছি', 'you': 'আপনি', 'opponent': 'প্রতিপক্ষ', 'prizes': 'পুরস্কার', 'active': 'সক্রিয়', 'bench': 'বেঞ্চ', 'clear': 'পরিষ্কার', 'swap_active': 'পরিবর্তন করুন', 'manage_prizes': 'পুরস্কার', 'back': 'ফিরে যান', 'rename_title': 'নাম পরিবর্তন', 'cancel': 'বাতিল', 'save': 'সংরক্ষণ', 'supporter': 'সমর্থক', 'retreat': 'পশ্চাদপসরণ', 'end_turn': 'পালা শেষ', 'turn': 'পালা', 'rules_text': 'নিখুঁত TCG সঙ্গী:\n\n• ড্র্যাগ ও ড্রপ: মাঝখান থেকে ড্যামেজ বা স্ট্যাটাস টোকেন কোনো পোকেমনের উপর টেনে আনুন।\n• সম্পাদনা: কাউন্টার সামঞ্জস্য করতে একটি পোকেমনে ট্যাপ করুন।\n• পরিবর্তন: বেঞ্চের পোকেমনকে সক্রিয়টির সাথে পরিবর্তন করতে তাতে ট্যাপ করুন।\n• প্রতি গেমে একবার: ব্যবহৃত হিসেবে চিহ্নিত করতে [GX] / [VSTAR] এ ট্যাপ করুন।\n• পালার কার্যক্রম: খেলা সমর্থক এবং ব্যবহৃত পশ্চাদপসরণ ট্র্যাক করুন।' },
+      'it': { 'title': 'Pokémon TCG', 'rules': 'Regole', 'ok': 'CAPITO', 'you': 'Tu', 'opponent': 'Avversario', 'prizes': 'Premi', 'active': 'Attivo', 'bench': 'Panchina', 'clear': 'Svuota', 'swap_active': 'Scambia', 'manage_prizes': 'Premi', 'back': 'INDIETRO', 'rename_title': 'Rinomina', 'cancel': 'ANNULLA', 'save': 'SALVA', 'supporter': 'Aiuto', 'retreat': 'Ritirata', 'end_turn': 'Fine Turno', 'turn': 'Turno', 'player_wins': '{name} vince!', 'rules_text': 'Il compagno perfetto per il TCG:\n\n• Trascina e rilascia: Trascina i segnalini di danno o stato dal centro su un Pokémon.\n• Modifica: Tocca un Pokémon per regolare i segnalini.\n• Scambia: Tocca un Pokémon in panchina per scambiarlo con quello attivo.\n• Una volta per partita: Tocca [GX] / [VSTAR] per segnarli come usati.\n• Azioni di turno: Tieni traccia dei supporter giocati o delle ritirate usate.' },
+      'es': { 'title': 'Pokémon TCG', 'rules': 'Reglas', 'ok': 'ENTENDIDO', 'you': 'Tú', 'opponent': 'Rival', 'prizes': 'Premios', 'active': 'Activo', 'bench': 'Banca', 'clear': 'Limpiar', 'swap_active': 'Cambiar', 'manage_prizes': 'Premios', 'back': 'VOLVER', 'rename_title': 'Renombrar', 'cancel': 'CANCELAR', 'save': 'GUARDAR', 'supporter': 'Partidario', 'retreat': 'Retirada', 'end_turn': 'Fin de turno', 'turn': 'Turno', 'player_wins': '¡{name} gana!', 'rules_text': 'El compañero perfecto para el TCG:\n\n• Arrastrar y soltar: Arrastra los contadores de daño o estado desde el centro hacia un Pokémon.\n• Editar: Toca un Pokémon para ajustar los contadores.\n• Cambiar: Toca un Pokémon en la banca para intercambiarlo con el activo.\n• Una vez por partida: Toca [GX] / [VSTAR] para marcarlos como usados.\n• Acciones de turno: Registra los partidarios jugados o las retiradas usadas.' },
+      'pt': { 'title': 'Pokémon TCG', 'rules': 'Regras', 'ok': 'ENTENDIDO', 'you': 'Você', 'opponent': 'Oponente', 'prizes': 'Prêmios', 'active': 'Ativo', 'bench': 'Banco', 'clear': 'Limpar', 'swap_active': 'Trocar', 'manage_prizes': 'Prêmios', 'back': 'VOLTAR', 'rename_title': 'Renomear', 'cancel': 'CANCELAR', 'save': 'SALVAR', 'supporter': 'Apoiador', 'retreat': 'Recuar', 'end_turn': 'Fim do turno', 'turn': 'Turno', 'player_wins': '{name} venceu!', 'rules_text': 'O companheiro perfeito para o TCG:\n\n• Arrastar e soltar: Arraste os marcadores de dano ou status do centro para um Pokémon.\n• Editar: Toque em um Pokémon para ajustar os marcadores.\n• Trocar: Toque em um Pokémon no banco para trocá-lo com o ativo.\n• Uma vez por partida: Toque em [GX] / [VSTAR] para marcá-los como usados.\n• Ações de turno: Acompanhe os apoiadores jogados ou recuos usados.' },
+      'nl': { 'title': 'Pokémon TCG', 'rules': 'Regels', 'ok': 'BEGREPEN', 'you': 'Jij', 'opponent': 'Tegenstander', 'prizes': 'Prijzen', 'active': 'Actief', 'bench': 'Bank', 'clear': 'Wissen', 'swap_active': 'Wissel', 'manage_prizes': 'Prijzen', 'back': 'TERUG', 'rename_title': 'Wijzigen', 'cancel': 'ANNULEREN', 'save': 'OPSLAAN', 'supporter': 'Supporter', 'retreat': 'Terugtrekken', 'end_turn': 'Einde beurt', 'turn': 'Beurt', 'player_wins': '{name} wint!', 'rules_text': 'De perfecte TCG-metgezel:\n\n• Slepen en neerzetten: Sleep schade- of statusmarkers vanuit het midden naar een Pokémon.\n• Bewerken: Tik op een Pokémon om markers aan te passen.\n• Wisselen: Tik op een Pokémon op de bank om deze te wisselen met de actieve.\n• Eén keer per potje: Tik op [GX] / [VSTAR] om ze als gebruikt te markeren.\n• Beurtacties: Houd bij welke supporters zijn gespeeld en welke terugtrekkingen zijn gebruikt.' },
+      'pl': { 'title': 'Pokémon TCG', 'rules': 'Zasady', 'ok': 'ZROZUMIAŁEM', 'you': 'Ty', 'opponent': 'Przeciwnik', 'prizes': 'Nagrody', 'active': 'Aktywny', 'bench': 'Ławka', 'clear': 'Wyczyść', 'swap_active': 'Zmień', 'manage_prizes': 'Nagrody', 'back': 'WRÓĆ', 'rename_title': 'Zmień nazwę', 'cancel': 'ANULUJ', 'save': 'ZAPISZ', 'supporter': 'Wsparcie', 'retreat': 'Wycofanie', 'end_turn': 'Koniec tury', 'turn': 'Tura', 'player_wins': '{name} wygrywa!', 'rules_text': 'Idealny towarzysz TCG:\n\n• Przeciągnij i upuść: Przeciągnij znaczniki obrażeń lub statusu ze środka na Pokémona.\n• Edytuj: Dotknij Pokémona, aby dostosować znaczniki.\n• Zmień: Dotknij Pokémona na ławce, aby zamienić go z aktywnym.\n• Raz na grę: Dotknij [GX] / [VSTAR], aby oznaczyć jako użyte.\n• Akcje tury: Śledź zagranych supporterów i użyte wycofania.' },
+      'tr': { 'title': 'Pokémon TCG', 'rules': 'Kurallar', 'ok': 'ANLADIM', 'you': 'Sen', 'opponent': 'Rakip', 'prizes': 'Ödüller', 'active': 'Aktif', 'bench': 'Yedek', 'clear': 'Temizle', 'swap_active': 'Değiştir', 'manage_prizes': 'Ödüller', 'back': 'GERİ', 'rename_title': 'İsim Değiştir', 'cancel': 'İPTAL', 'save': 'KAYDET', 'supporter': 'Destekçi', 'retreat': 'Geri Çekil', 'end_turn': 'Turu Bitir', 'turn': 'Tur', 'player_wins': '{name} kazandı!', 'rules_text': 'Mükemmel TCG yoldaşı:\n\n• Sürükle & Bırak: Hasar veya durum jetonlarını ortadan bir Pokémon\'a sürükleyin.\n• Düzenle: Sayaçları ayarlamak için bir Pokémon\'a dokunun.\n• Değiştir: Aktif olanla değiştirmek için yedekteki bir Pokémon\'a dokunun.\n• Oyun başına bir kez: Kullanıldı olarak işaretlemek için [GX] / [VSTAR]\'a dokunun.\n• Tur aksiyonları: Oynanan destekçileri ve kullanılan geri çekilmeleri takip edin.' },
+      'id': { 'title': 'Pokémon TCG', 'rules': 'Aturan', 'ok': 'MENGERTI', 'you': 'Kamu', 'opponent': 'Lawan', 'prizes': 'Hadiah', 'active': 'Aktif', 'bench': 'Cadangan', 'clear': 'Bersihkan', 'swap_active': 'Tukar', 'manage_prizes': 'Hadiah', 'back': 'KEMBALI', 'rename_title': 'Ubah Nama', 'cancel': 'BATAL', 'save': 'SIMPAN', 'supporter': 'Pendukung', 'retreat': 'Mundur', 'end_turn': 'Akhiri Giliran', 'turn': 'Giliran', 'player_wins': '{name} menang!', 'rules_text': 'Pendamping TCG yang sempurna:\n\n• Seret & Lepas: Seret token kerusakan atau status dari tengah ke Pokémon.\n• Edit: Ketuk Pokémon untuk menyesuaikan penghitung.\n• Tukar: Ketuk Pokémon di bangku cadangan untuk menukarnya dengan yang aktif.\n• Sekali per game: Ketuk [GX] / [VSTAR] untuk menandainya sebagai terpakai.\n• Aksi giliran: Lacak pendukung yang dimainkan atau mundur yang digunakan.' },
+      'sv': { 'title': 'Pokémon TCG', 'rules': 'Regler', 'ok': 'FÖRSTÅTT', 'you': 'Du', 'opponent': 'Motståndare', 'prizes': 'Priser', 'active': 'Aktiv', 'bench': 'Bänk', 'clear': 'Rensa', 'swap_active': 'Byt', 'manage_prizes': 'Priser', 'back': 'TILLBAKA', 'rename_title': 'Byt namn', 'cancel': 'AVBRYT', 'save': 'SPARA', 'supporter': 'Supporter', 'retreat': 'Reträtt', 'end_turn': 'Avsluta tur', 'turn': 'Tur', 'player_wins': '{name} vinner!', 'rules_text': 'Den perfekta TCG-följeslagaren:\n\n• Dra och släpp: Dra skade- eller statusmarkörer från mitten till en Pokémon.\n• Redigera: Tryck på en Pokémon för att justera markörer.\n• Byt: Tryck på en Pokémon på bänken för att byta den mot den aktiva.\n• En gång per match: Tryck på [GX] / [VSTAR] för att markera dem som använda.\n• Turåtgärder: Håll koll på spelade supportrar och använda reträtter.' },
+      'hr': { 'title': 'Pokémon TCG', 'rules': 'Pravila', 'ok': 'RAZUMIJEM', 'you': 'Ti', 'opponent': 'Protivnik', 'prizes': 'Nagrade', 'active': 'Aktivni', 'bench': 'Klupa', 'clear': 'Očisti', 'swap_active': 'Zamijeni', 'manage_prizes': 'Nagrade', 'back': 'NATRAG', 'rename_title': 'Promijeni ime', 'cancel': 'ODUSTANI', 'save': 'SPREMI', 'supporter': 'Podrška', 'retreat': 'Povlačenje', 'end_turn': 'Kraj Poteza', 'turn': 'Potez', 'player_wins': '{name} pobjeđuje!', 'rules_text': 'Savršeni TCG pratitelj:\n\n• Povuci i ispusti: Povuci žetone oštećenja ili statusa iz sredine na Pokémona.\n• Uredi: Dodirni Pokémona za prilagodbu žetona.\n• Zamijeni: Dodirni Pokémona na klupi da ga zamijeniš s aktivnim.\n• Jednom po igri: Dodirni [GX] / [VSTAR] da ih označiš kao iskorištene.\n• Radnje poteza: Prati odigrane podržavatelje i iskorištena povlačenja.' },
+      'ru': { 'title': 'Pokémon TCG', 'rules': 'Правила', 'ok': 'ПОНЯТНО', 'you': 'Вы', 'opponent': 'Соперник', 'prizes': 'Призы', 'active': 'Активный', 'bench': 'Скамья', 'clear': 'Очистить', 'swap_active': 'Сменить', 'manage_prizes': 'Призы', 'back': 'НАЗАД', 'rename_title': 'Переименовать', 'cancel': 'ОТМЕНА', 'save': 'СОХРАНИТЬ', 'supporter': 'Поддержка', 'retreat': 'Отступление', 'end_turn': 'Конец хода', 'turn': 'Ход', 'player_wins': '{name} побеждает!', 'rules_text': 'Идеальный компаньон для ККИ:\n\n• Перетаскивание: Перетащите жетоны урона или статуса из центра на покемона.\n• Редактирование: Нажмите на покемона, чтобы настроить счётчики.\n• Замена: Нажмите на покемона на скамейке, чтобы поменять его местами с активным.\n• Один раз за игру: Нажмите [GX] / [VSTAR], чтобы отметить их как использованные.\n• Действия хода: Отслеживайте сыгранных саппортов и использованные отступления.' },
+      'ja': { 'title': 'Pokémon TCG', 'rules': 'ルール', 'ok': '了解', 'you': 'あなた', 'opponent': '相手', 'prizes': 'サイド', 'active': 'バトル場', 'bench': 'ベンチ', 'clear': 'クリア', 'swap_active': '入れ替え', 'manage_prizes': 'サイド', 'back': '戻る', 'rename_title': '名前を変更', 'cancel': 'キャンセル', 'save': '保存', 'supporter': 'サポート', 'retreat': 'にげる', 'end_turn': 'ターン終了', 'turn': 'ターン', 'player_wins': '{name}の勝ち！', 'rules_text': '最高のTCGパートナー：\n\n• ドラッグ＆ドロップ：中央のダメージ・状態マーカーをポケモンにドラッグします。\n• 編集：ポケモンをタップしてマーカーを調整します。\n• 交代：ベンチのポケモンをタップしてバトル場のポケモンと入れ替えます。\n• 1試合1回：[GX]／[VSTAR]をタップして使用済みにします。\n• ターンの操作：使用したサポートやにげるを記録します。' },
+      'ko': { 'title': 'Pokémon TCG', 'rules': '규칙', 'ok': '확인', 'you': '당신', 'opponent': '상대방', 'prizes': '프라이즈', 'active': '배틀필드', 'bench': '벤치', 'clear': '지우기', 'swap_active': '교체', 'manage_prizes': '프라이즈', 'back': '뒤로', 'rename_title': '이름 변경', 'cancel': '취소', 'save': '저장', 'supporter': '서포터', 'retreat': '후퇴', 'end_turn': '턴 종료', 'turn': '턴', 'player_wins': '{name} 승리!', 'rules_text': '완벽한 TCG 동반자:\n\n• 드래그 앤 드롭: 중앙의 데미지 또는 상태 토큰을 포켓몬 위로 드래그하세요.\n• 편집: 포켓몬을 탭하여 카운터를 조정하세요.\n• 교체: 벤치의 포켓몬을 탭하여 배틀필드의 포켓몬과 교체하세요.\n• 게임당 한 번: [GX] / [VSTAR]를 탭하여 사용됨으로 표시하세요.\n• 턴 액션: 사용한 서포터와 후퇴를 기록하세요.' },
+      'zh': { 'title': '宝可梦 TCG', 'rules': '规则', 'ok': '明白了', 'you': '你', 'opponent': '对手', 'prizes': '奖赏卡', 'active': '出战', 'bench': '备战区', 'clear': '清除', 'swap_active': '替换', 'manage_prizes': '奖赏卡', 'back': '返回', 'rename_title': '重命名', 'cancel': '取消', 'save': '保存', 'supporter': '支援者', 'retreat': '撤退', 'end_turn': '结束回合', 'turn': '回合', 'player_wins': '{name} 获胜！', 'rules_text': '完美的集换式卡牌搭档：\n\n• 拖放：将中间的伤害或状态标记拖到宝可梦身上。\n• 编辑：点击宝可梦以调整标记。\n• 替换：点击备战区的宝可梦以与出战宝可梦互换。\n• 每场一次：点击[GX]／[VSTAR]将其标记为已使用。\n• 回合操作：记录已使用的支援者和已使用的撤退。' },
+      'hi': { 'title': 'Pokémon TCG', 'rules': 'नियम', 'ok': 'समझ गया', 'you': 'आप', 'opponent': 'प्रतिद्वंद्वी', 'prizes': 'इनाम', 'active': 'सक्रिय', 'bench': 'बेंच', 'clear': 'साफ़ करें', 'swap_active': 'बदलें', 'manage_prizes': 'इनाम', 'back': 'वापस', 'rename_title': 'नाम बदलें', 'cancel': 'रद्द करें', 'save': 'सहेजें', 'supporter': 'समर्थक', 'retreat': 'पीछे हटना', 'end_turn': 'बारी समाप्त', 'turn': 'बारी', 'player_wins': '{name} जीत गया!', 'rules_text': 'परफेक्ट TCG साथी:\n\n• ड्रैग एंड ड्रॉप: बीच से डैमेज या स्टेटस टोकन को किसी पोकेमॉन पर खींचें।\n• संपादित करें: काउंटर समायोजित करने के लिए किसी पोकेमॉन पर टैप करें।\n• बदलें: बेंच के पोकेमॉन को सक्रिय पोकेमॉन से बदलने के लिए उस पर टैप करें।\n• प्रति गेम एक बार: उन्हें उपयोग किया हुआ चिह्नित करने के लिए [GX] / [VSTAR] पर टैप करें।\n• बारी की क्रियाएं: खेले गए समर्थकों और उपयोग की गई वापसी को ट्रैक करें।' },
+      'bn': { 'title': 'Pokémon TCG', 'rules': 'নিয়ম', 'ok': 'বুঝেছি', 'you': 'আপনি', 'opponent': 'প্রতিপক্ষ', 'prizes': 'পুরস্কার', 'active': 'সক্রিয়', 'bench': 'বেঞ্চ', 'clear': 'পরিষ্কার', 'swap_active': 'পরিবর্তন করুন', 'manage_prizes': 'পুরস্কার', 'back': 'ফিরে যান', 'rename_title': 'নাম পরিবর্তন', 'cancel': 'বাতিল', 'save': 'সংরক্ষণ', 'supporter': 'সমর্থক', 'retreat': 'পশ্চাদপসরণ', 'end_turn': 'পালা শেষ', 'turn': 'পালা', 'player_wins': '{name} জিতেছে!', 'rules_text': 'নিখুঁত TCG সঙ্গী:\n\n• ড্র্যাগ ও ড্রপ: মাঝখান থেকে ড্যামেজ বা স্ট্যাটাস টোকেন কোনো পোকেমনের উপর টেনে আনুন।\n• সম্পাদনা: কাউন্টার সামঞ্জস্য করতে একটি পোকেমনে ট্যাপ করুন।\n• পরিবর্তন: বেঞ্চের পোকেমনকে সক্রিয়টির সাথে পরিবর্তন করতে তাতে ট্যাপ করুন।\n• প্রতি গেমে একবার: ব্যবহৃত হিসেবে চিহ্নিত করতে [GX] / [VSTAR] এ ট্যাপ করুন।\n• পালার কার্যক্রম: খেলা সমর্থক এবং ব্যবহৃত পশ্চাদপসরণ ট্র্যাক করুন।' },
     };
 
     if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {
@@ -224,6 +235,16 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
 
   void _showRenameDialog(PokePlayer player) {
     _renameController.text = player.name;
+
+    void save(BuildContext dialogContext) {
+      final name = _renameController.text.trim();
+      if (name.isNotEmpty) {
+        setState(() => player.name = name);
+        _persist();
+      }
+      Navigator.pop(dialogContext);
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -238,20 +259,12 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor)),
             focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor, width: 2)),
           ),
-          onSubmitted: (_) {
-            setState(() => player.name = _renameController.text.trim());
-            _persist();
-            Navigator.pop(context);
-          },
+          onSubmitted: (_) => save(context),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text(_t('cancel'), style: const TextStyle(color: Colors.grey))),
           TextButton(
-            onPressed: () {
-              setState(() => player.name = _renameController.text.trim());
-              _persist();
-              Navigator.pop(context);
-            },
+            onPressed: () => save(context),
             child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
           ),
         ],
@@ -275,13 +288,18 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                 icon: const Icon(Icons.remove, color: Colors.white, size: 30),
                 onPressed: () {
                   HapticFeedback.lightImpact();
+                  final hadPrizes = player.prizes > 0;
                   setState(() {
-                    if (player.prizes > 0) player.prizes--;
+                    if (hadPrizes) player.prizes--;
                   });
                   _persist();
                   Navigator.pop(context);
-                  if(player.prizes == 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${player.name} gewinnt!"), backgroundColor: primaryColor));
+                  if (hadPrizes && player.prizes == 0) {
+                    // Screen-Context statt Dialog-Context: der Dialog ist hier bereits geschlossen
+                    ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(
+                      content: Text(_t('player_wins').replaceAll('{name}', player.name)),
+                      backgroundColor: primaryColor,
+                    ));
                   }
                 },
               ),
@@ -336,17 +354,18 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
       builder: (context) => StatefulBuilder(
           builder: (context, setModalState) {
 
+            // Änderung genau einmal ausführen, danach Sheet und Spielfeld neu zeichnen
             void updateState(VoidCallback fn) {
-              setModalState(fn);
               setState(fn);
+              setModalState(() {});
+              _persist();
             }
 
             PokePlayer player = isPlayer1 ? player1 : player2;
             PokeSlot slot = benchIndex == -1 ? player.active : player.bench[benchIndex];
 
-            return Container(
-              padding: const EdgeInsets.all(20),
-              height: MediaQuery.of(context).size.height * 0.45,
+            return Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -357,18 +376,43 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _editBtn("-50", () { updateState(() => slot.damage = max(0, slot.damage - 50)); _persist(); }),
-                      _editBtn("-10", () { updateState(() => slot.damage = max(0, slot.damage - 10)); _persist(); }),
-                      SizedBox(
-                          width: 80,
-                          child: Text("${slot.damage}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold))
+                      _editBtn("-50", () => updateState(() => slot.damage = max(0, slot.damage - 50))),
+                      _editBtn("-10", () => updateState(() => slot.damage = max(0, slot.damage - 10))),
+                      Expanded(
+                          child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text("${slot.damage}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold))
+                          )
                       ),
-                      _editBtn("+10", () { updateState(() => slot.damage += 10); _persist(); }),
-                      _editBtn("+50", () { updateState(() => slot.damage += 50); _persist(); }),
+                      _editBtn("+10", () => updateState(() => slot.damage += 10)),
+                      _editBtn("+50", () => updateState(() => slot.damage += 50)),
                     ],
                   ),
 
-                  const Spacer(),
+                  // Spezielle Zustände (nur aktives Pokémon) - Antippen schaltet an/aus
+                  if (benchIndex == -1) ...[
+                    const SizedBox(height: 25),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _statusToggle(Icons.local_fire_department, burnColor, slot.isBurned,
+                            () => updateState(() => slot.isBurned = !slot.isBurned)),
+                        _statusToggle(Icons.sick, poisonColor, slot.isPoisoned,
+                            () => updateState(() => slot.isPoisoned = !slot.isPoisoned)),
+                        Container(width: 2, height: 30, color: Colors.white12),
+                        for (final entry in {
+                          SpecialCondition.asleep: (Icons.nights_stay, statusColor),
+                          SpecialCondition.paralyzed: (Icons.bolt, primaryColor),
+                          SpecialCondition.confused: (Icons.sync, statusColor),
+                        }.entries)
+                          _statusToggle(entry.value.$1, entry.value.$2, slot.condition == entry.key,
+                              () => updateState(() => slot.condition =
+                                  slot.condition == entry.key ? SpecialCondition.none : entry.key)),
+                      ],
+                    ),
+                  ],
+
+                  const SizedBox(height: 30),
 
                   // Aktionen
                   Row(
@@ -377,7 +421,6 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             updateState(() => slot.clearAll());
-                            _persist();
                             Navigator.pop(context);
                           },
                           icon: const Icon(Icons.delete),
@@ -391,8 +434,8 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               setState(() {
-                                // Tausche Active mit Bank
-                                PokeSlot temp = player.active;
+                                // Tausche Active mit Bank - das bisher aktive Pokémon verliert seine Zustände
+                                PokeSlot temp = player.active..clearConditions();
                                 player.active = player.bench[benchIndex];
                                 player.bench[benchIndex] = temp;
                               });
@@ -416,11 +459,31 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
     );
   }
 
+  Widget _statusToggle(IconData icon, Color color, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 50, height: 50,
+        decoration: BoxDecoration(
+          color: active ? color.withValues(alpha: 0.35) : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(color: active ? color : Colors.white24, width: 2),
+        ),
+        child: Icon(icon, color: active ? color : Colors.white38),
+      ),
+    );
+  }
+
   Widget _editBtn(String text, VoidCallback onTap) {
     return ElevatedButton(
       onPressed: onTap,
-      style: ElevatedButton.styleFrom(backgroundColor: activeColor, shape: const CircleBorder(), padding: const EdgeInsets.all(15)),
-      child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      // Feste Grösse, damit die Reihe auch auf schmalen Handys (<= 360pt) nicht überläuft
+      style: ElevatedButton.styleFrom(backgroundColor: activeColor, shape: const CircleBorder(), padding: EdgeInsets.zero, fixedSize: const Size(56, 56), minimumSize: const Size(56, 56)),
+      child: FittedBox(fit: BoxFit.scaleDown, child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
     );
   }
 
@@ -460,33 +523,10 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                   color: surfaceColor,
                   border: Border.symmetric(horizontal: BorderSide(color: primaryColor.withOpacity(0.3), width: 2))
               ),
-              child: Row(
-                children: [
-                  // Turn Counter Badge
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: activeColor,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: primaryColor.withOpacity(0.5)),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(_t('turn'), style: const TextStyle(color: Colors.white54, fontSize: 9)),
-                          Text("$turnCounter", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(width: 2, height: 40, color: Colors.white12),
-                  Expanded(
+              child: Center(
                     child: ListView(
                       scrollDirection: Axis.horizontal,
+                      shrinkWrap: true,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       children: [
                         _buildDraggableToken('10', damageColor),
@@ -505,8 +545,6 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
                         _buildDraggableToken('CNF', statusColor, icon: Icons.sync), // Confused
                       ],
                     ),
-                  ),
-                ],
               ),
             ),
 
@@ -700,17 +738,18 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
         GestureDetector(
           onTap: () {
             HapticFeedback.mediumImpact();
-            setState(() {
-              player.endTurn();
-              turnCounter++;
-            });
+            setState(() => player.endTurn());
             _persist();
           },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(color: Colors.red.withOpacity(0.8), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+          child: Tooltip(
+            message: _t('end_turn'),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(10)),
+              // skip_next statt refresh: refresh sieht aus wie "Spiel zurücksetzen" oben rechts
+              child: const Icon(Icons.skip_next, color: Colors.white, size: 20),
+            ),
           ),
         ),
       ],
@@ -743,9 +782,11 @@ class _PokemonTCGGameState extends State<PokemonTCGGame> {
   // Reusable Slot with DragTarget
   Widget _buildDroppableSlot(PokeSlot slot, String title, bool isActive, bool isP1, int benchIndex) {
     return DragTarget<String>(
-      onAccept: (data) {
+      // Bank-Pokémon können keine Speziellen Zustände haben - dort nur Schadensmarken annehmen
+      onWillAcceptWithDetails: (details) => isActive || PokeSlot.isDamageToken(details.data),
+      onAcceptWithDetails: (details) {
         HapticFeedback.heavyImpact();
-        setState(() => slot.applyToken(data));
+        setState(() => slot.applyToken(details.data));
         _persist();
       },
       builder: (context, candidateData, rejectedData) {
