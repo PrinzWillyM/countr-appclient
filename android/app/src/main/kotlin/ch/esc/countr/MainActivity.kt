@@ -1,4 +1,4 @@
-package me.duschletta.easy_score_board
+package ch.esc.countr
 
 import io.flutter.embedding.android.FlutterActivity
 
