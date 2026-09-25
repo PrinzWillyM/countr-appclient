@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -625,7 +624,6 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, locale, child) {
         final colors = Theme.of(context).colorScheme;
 
-        final allGames = _getGamesList();
         final currentGames = _sortedAndFilteredGames;
 
         GameData? activeGame;
