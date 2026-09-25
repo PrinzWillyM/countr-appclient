@@ -1,8 +1,16 @@
+import 'dart:async';
 import 'dart:math';
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../main.dart';
 import '../services/game_persistence.dart';
+import 'mtg/mtg_commander_art.dart';
+import 'mtg/mtg_commander_search.dart';
+import 'mtg/mtg_i18n.dart';
+import 'mtg/mtg_layouts.dart';
+import 'mtg/mtg_model.dart';
+import 'mtg/mtg_panels.dart';
+import 'mtg/mtg_tile.dart';
 
 class MagicTheGatheringGame extends StatefulWidget {
   final Color? themeColor;
@@ -16,679 +24,483 @@ class MagicTheGatheringGame extends StatefulWidget {
 
 class _MagicTheGatheringGameState extends State<MagicTheGatheringGame> {
   static const String gameId = 'game_title_mtg';
+  static const Duration _rollAnimation = Duration(seconds: 1);
 
-  // --- STYLE ---
-  Color get primaryColor => widget.themeColor ?? const Color(0xFFEBCB63); // Brand Yellow
-  final Color bgColor = const Color(0xFF222629);
-  final Color surfaceColor = const Color(0xFF30363B);
+  Color get accent => widget.themeColor ?? const Color(0xFFEBCB63);
 
-  // --- STATE ---
-  int playerCount = 2;
-  int startLife = 20; // 20 für Standard, 40 für Commander
-  List<Map<String, dynamic>> players = [];
-  // Sprache: immer live vom globalen App-Status gelesen (reaktiv auf Sprachwechsel)
-  String get _currentLang => appLocaleNotifier.value.languageCode;
+  final _random = Random();
 
-  final TextEditingController _renameController = TextEditingController();
+  // Commander ist der häufigste Anwendungsfall: 4 Spieler, 40 Leben
+  late MtgGame game = MtgGame.create(playerCount: 4, startLife: 40, defaultName: _defaultName);
 
-  // Menü-Steuerung
-  int _activeMenu = 0; // 0=nichts, 1=Life, 2=Players
+  // Kurz eingeblendete Summe der letzten Lebensänderungen je Spieler ("-3")
+  final Map<int, int> _deltas = {};
+  final Map<int, Timer> _deltaTimers = {};
+
+  // Offener Commander-Schaden-Stepper: Ziel-Spieler und Quelle
+  ({int target, int source})? _commanderEdit;
+
+  // "Wer beginnt?": jeder Spieler würfelt selbst. Leer = nicht aktiv.
+  final Map<int, MtgRollPhase> _rollPhase = {};
+  final Map<int, int> _rollValue = {};
+  Set<int> _rollContenders = {};
+  bool _rollTie = false;
+  int? _rollWinner;
+  final List<Timer> _rollTimers = [];
+
+  // Zug-Timer: Start des aktuellen Zuges (nicht gespeichert, beim Fortsetzen startet die Uhr neu)
+  DateTime _turnStartedAt = clock.now();
+  Timer? _ticker;
+
+  bool _menuOpen = false;
+
+  // Commander-Artwork: zuletzt gewählte Bilder (SharedPreferences) und Scryfall-Suche
+  List<MtgCommanderArt> _recentArts = [];
+  final ScryfallClient _scryfall = ScryfallClient();
+
+  static String _defaultName(int i) => '${mtgT('player')} ${i + 1}';
+
+  MtgLayout get _layout => mtgLayoutFor(game.playerCount, game.layoutIndex);
+
+  // Bis Spielstand bzw. letztes Setup geladen sind, bleibt der Bildschirm schwarz (kein Aufblitzen)
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.resume) {
-      _loadSavedState();
+      _load();
     } else {
-      _resetGame();
+      _startFromLastSetup();
     }
+    MtgRecentCommanders.load().then((arts) {
+      if (mounted) setState(() => _recentArts = arts);
+    });
   }
 
-  Future<void> _loadSavedState() async {
+  // Neues Spiel: Runden spielen meist in derselben Gruppe mit denselben Einstellungen
+  Future<void> _startFromLastSetup() async {
+    final setup = await MtgSetupStore.load();
+    if (!mounted) return;
+    setState(() {
+      if (setup != null) game = setup.createGame(defaultName: _defaultName);
+      _ready = true;
+    });
+    _persist();
+  }
+
+  @override
+  void dispose() {
+    for (final t in _deltaTimers.values) {
+      t.cancel();
+    }
+    for (final t in _rollTimers) {
+      t.cancel();
+    }
+    _ticker?.cancel();
+    _scryfall.close();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
     final saved = await GamePersistence.load(gameId);
-    if (saved == null || !mounted) {
-      _resetGame();
+    if (!mounted) return;
+    final restored = saved == null ? null : MtgGame.fromJson(saved);
+    if (restored == null || kMtgLayouts[restored.playerCount] == null) {
+      await _startFromLastSetup();
       return;
     }
     setState(() {
-      playerCount = saved['playerCount'] as int? ?? playerCount;
-      startLife = saved['startLife'] as int? ?? startLife;
-      final savedPlayers = (saved['players'] as List<dynamic>?) ?? [];
-      players = savedPlayers.map((p) {
-        final map = Map<String, dynamic>.from(p as Map);
-        map['cmdDamage'] = List<int>.from((map['cmdDamage'] as List).map((e) => e as int));
-        return map;
-      }).toList();
-      _activeMenu = 0;
+      for (var i = 0; i < restored.players.length; i++) {
+        if (restored.players[i].name.isEmpty) restored.players[i].name = _defaultName(i);
+      }
+      game = restored;
+      _turnStartedAt = clock.now();
+      _ready = true;
     });
+    _syncTicker();
   }
 
   void _persist() {
-    GamePersistence.save(gameId, {
-      'playerCount': playerCount,
-      'startLife': startLife,
-      'players': players,
+    GamePersistence.save(gameId, game.toJson());
+    // Einstellungen gleich mit merken, damit das nächste neue Spiel so startet
+    MtgSetupStore.save(MtgSetup.of(game));
+  }
+
+  void _mutate(VoidCallback fn) {
+    setState(fn);
+    _persist();
+  }
+
+  // --- Leben & Commander-Schaden ---
+
+  void _trackDelta(int index, int delta) {
+    if (delta == 0) return;
+    _deltas[index] = (_deltas[index] ?? 0) + delta;
+    _deltaTimers[index]?.cancel();
+    _deltaTimers[index] = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _deltas.remove(index));
     });
   }
 
-  // --- ÜBERSETZUNG ---
-  String _t(String key) {
-    const Map<String, Map<String, String>> dictionary = {
-      'de': {
-        'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Spieler',
-        'reset': 'Reset', 'rules_title': 'Anleitung', 'ok': 'VERSTANDEN', 'cancel': 'ABBRECHEN', 'save': 'SPEICHERN',
-        'rename_title': 'Name ändern', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Commander-Schaden',
-        'rules_text': 'MTG Lebenszähler.\n\n• Wähle oben 20 (Standard) oder 40 (Commander).\n• Nutze die -5/-1/+1/+5 Buttons für schnelles Ändern.\n• Tippe auf den Namen, um ihn zu ändern.\n• Tippe auf das Schwerter-Symbol, um Commander-Schaden pro Gegner zu tracken (ab 21 = K.O.).',
-      },
-      'en': {
-        'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Players',
-        'reset': 'Reset', 'rules_title': 'Rules', 'ok': 'GOT IT', 'cancel': 'CANCEL', 'save': 'SAVE',
-        'rename_title': 'Rename', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Commander Damage',
-        'rules_text': 'MTG Life Counter.\n\n• Choose 20 (Standard) or 40 (Commander).\n• Use -5/-1/+1/+5 buttons to change life.\n• Tap the name to rename.\n• Tap the swords icon to track commander damage per opponent (21 = K.O.).',
-      },
-      'fr': {
-        'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Joueurs',
-        'reset': 'Réinit.', 'rules_title': 'Règles', 'ok': 'COMPRIS', 'cancel': 'ANNULER', 'save': 'SAUVER',
-        'rename_title': 'Renommer', 'planeswalker': 'Planeswalker',
-        'rules_text': 'Compteur de vie MTG.\n\n• Choisissez 20 (Standard) ou 40 (Commander).\n• Utilisez les boutons -5/-1/+1/+5.\n• Appuyez sur le nom pour renommer.',
-      },
-      'it': { 'title': 'Magic: The Gathering', 'start_life': 'Formato', 'players': 'Giocatori', 'reset': 'Reset', 'rules_title': 'Regole', 'ok': 'CAPITO', 'cancel': 'ANNULLA', 'save': 'SALVA', 'rename_title': 'Rinomina', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Danno Comandante', 'rules_text': 'Contatore vita MTG.\n\n• Scegli 20 o 40.\n• Usa i pulsanti -5/-1/+1/+5.\n• Tocca il nome per rinominare.\n• Tocca l\'icona della spada per il danno comandante per avversario (21 = K.O.).' },
-      'es': { 'title': 'Magic: The Gathering', 'start_life': 'Formato', 'players': 'Jugadores', 'reset': 'Reiniciar', 'rules_title': 'Reglas', 'ok': 'ENTENDIDO', 'cancel': 'CANCELAR', 'save': 'GUARDAR', 'rename_title': 'Renombrar', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Daño de Comandante', 'rules_text': 'Contador de vida MTG.\n\n• Elige 20 o 40.\n• Usa botones -5/-1/+1/+5.\n• Toca el nombre para renombrar.\n• Toca el icono de espadas para el daño de comandante por oponente (21 = K.O.).' },
-      'pt': { 'title': 'Magic: The Gathering', 'start_life': 'Formato', 'players': 'Jogadores', 'reset': 'Reiniciar', 'rules_title': 'Regras', 'ok': 'ENTENDIDO', 'cancel': 'CANCELAR', 'save': 'SALVAR', 'rename_title': 'Renomear', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Dano de Comandante', 'rules_text': 'Contador de vida MTG.\n\n• Escolha 20 ou 40.\n• Use botões -5/-1/+1/+5.\n• Toque no nome para renomear.\n• Toque no ícone de espadas para o dano de comandante por oponente (21 = K.O.).' },
-      'nl': { 'title': 'Magic: The Gathering', 'start_life': 'Formaat', 'players': 'Spelers', 'reset': 'Reset', 'rules_title': 'Regels', 'ok': 'BEGREPEN', 'cancel': 'ANNULEREN', 'save': 'OPSLAAN', 'rename_title': 'Wijzigen', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Commander-schade', 'rules_text': 'MTG Levensteller.\n\n• Kies 20 of 40.\n• Gebruik -5/-1/+1/+5 knoppen.\n• Tik op de naam om te wijzigen.\n• Tik op het zwaardenicoon voor commander-schade per tegenstander (21 = K.O.).' },
-      'pl': { 'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Graczy', 'reset': 'Reset', 'rules_title': 'Zasady', 'ok': 'ZROZUMIAŁEM', 'cancel': 'ANULUJ', 'save': 'ZAPISZ', 'rename_title': 'Zmień nazwę', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Obrażenia Dowódcy', 'rules_text': 'Licznik życia MTG.\n\n• Wybierz 20 lub 40.\n• Użyj przycisków -5/-1/+1/+5.\n• Dotknij nazwy, aby zmienić.\n• Dotknij ikony mieczy, aby śledzić obrażenia dowódcy dla każdego przeciwnika (21 = K.O.).' },
-      'tr': { 'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Oyuncular', 'reset': 'Sıfırla', 'rules_title': 'Kurallar', 'ok': 'ANLADIM', 'cancel': 'İPTAL', 'save': 'KAYDET', 'rename_title': 'İsim Değiştir', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Komutan Hasarı', 'rules_text': 'MTG Can Sayacı.\n\n• 20 veya 40 seçin.\n• -5/-1/+1/+5 kullanın.\n• İsme dokunarak değiştirin.\n• Rakip başına komutan hasarını takip etmek için kılıç simgesine dokunun (21 = K.O.).' },
-      'id': { 'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Pemain', 'reset': 'Reset', 'rules_title': 'Aturan', 'ok': 'MENGERTI', 'cancel': 'BATAL', 'save': 'SIMPAN', 'rename_title': 'Ubah Nama', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Kerusakan Komandan', 'rules_text': 'Penghitung nyawa MTG.\n\n• Pilih 20 atau 40.\n• Gunakan tombol -5/-1/+1/+5.\n• Ketuk nama untuk mengubah.\n• Ketuk ikon pedang untuk melacak kerusakan komandan per lawan (21 = K.O.).' },
-      'sv': { 'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Spelare', 'reset': 'Återställ', 'rules_title': 'Regler', 'ok': 'FÖRSTÅTT', 'cancel': 'AVBRYT', 'save': 'SPARA', 'rename_title': 'Byt namn', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Commander-skada', 'rules_text': 'MTG Livräknare.\n\n• Välj 20 eller 40.\n• Använd -5/-1/+1/+5 knappar.\n• Tryck på namnet för att byta.\n• Tryck på svärdikonen för Commander-skada per motståndare (21 = K.O.).' },
-      'hr': { 'title': 'Magic: The Gathering', 'start_life': 'Format', 'players': 'Igrača', 'reset': 'Reset', 'rules_title': 'Pravila', 'ok': 'RAZUMIJEM', 'cancel': 'ODUSTANI', 'save': 'SPREMI', 'rename_title': 'Promijeni ime', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Šteta zapovjednika', 'rules_text': 'MTG Brojač života.\n\n• Odaberi 20 ili 40.\n• Koristi tipke -5/-1/+1/+5.\n• Dodirni ime za promjenu.\n• Dodirni ikonu mačeva za štetu zapovjednika po protivniku (21 = K.O.).' },
-      'ru': { 'title': 'Magic: The Gathering', 'start_life': 'Формат', 'players': 'Игроков', 'reset': 'Сброс', 'rules_title': 'Правила', 'ok': 'ПОНЯТНО', 'cancel': 'ОТМЕНА', 'save': 'СОХРАНИТЬ', 'rename_title': 'Переименовать', 'planeswalker': 'Planeswalker', 'commander_dmg': 'Урон командира', 'rules_text': 'Счетчик жизней MTG.\n\n• Выберите 20 или 40.\n• Используйте кнопки -5/-1/+1/+5.\n• Нажмите на имя, чтобы изменить.\n• Нажмите на значок мечей, чтобы отслеживать урон командира от каждого противника (21 = поражение).' },
-      'ja': { 'title': 'マジック：ザ・ギャザリング', 'start_life': 'フォーマット', 'players': 'プレイヤー', 'reset': 'リセット', 'rules_title': 'ルール', 'ok': '了解', 'cancel': 'キャンセル', 'save': '保存', 'rename_title': '名前を変更', 'planeswalker': 'プレインズウォーカー', 'commander_dmg': '統率者ダメージ', 'rules_text': 'MTGライフカウンター。\n\n• 20または40を選択。\n• -5/-1/+1/+5ボタンを使用。\n• 名前をタップして変更。\n• 剣アイコンをタップして相手ごとの統率者ダメージを記録(21で敗北)。' },
-      'ko': { 'title': '매직: 더 개더링', 'start_life': '포맷', 'players': '플레이어', 'reset': '초기화', 'rules_title': '규칙', 'ok': '확인', 'cancel': '취소', 'save': '저장', 'rename_title': '이름 변경', 'planeswalker': '플레인즈워커', 'commander_dmg': '커맨더 피해', 'rules_text': 'MTG 라이프 카운터.\n\n• 20 또는 40 선택.\n• -5/-1/+1/+5 버튼 사용.\n• 이름을 탭하여 변경.\n• 검 아이콘을 탭하여 상대별 커맨더 피해를 추적하세요 (21 = 패배).' },
-      'zh': { 'title': '万智牌', 'start_life': '赛制', 'players': '玩家', 'reset': '重置', 'rules_title': '规则', 'ok': '明白了', 'cancel': '取消', 'save': '保存', 'rename_title': '重命名', 'planeswalker': '鹏洛客', 'commander_dmg': '指挥官伤害', 'rules_text': 'MTG 生命计数器。\n\n• 选择 20 或 40。\n• 使用 -5/-1/+1/+5 按钮。\n• 点击名字重命名。\n• 点击剑图标以追踪每个对手造成的指挥官伤害(21点=淘汰)。' },
-      'hi': { 'title': 'मैजिक: द गैदरिंग', 'start_life': 'प्रारूप', 'players': 'खिलाड़ी', 'reset': 'रीसेट', 'rules_title': 'नियम', 'ok': 'समझ गया', 'cancel': 'रद्द करें', 'save': 'सहेजें', 'rename_title': 'नाम बदलें', 'planeswalker': 'प्लेनस्वॉकर', 'commander_dmg': 'कमांडर डैमेज', 'rules_text': 'MTG लाइफ काउंटर।\n\n• 20 या 40 चुनें।\n• -5/-1/+1/+5 बटन का उपयोग करें।\n• नाम बदलने के लिए टैप करें।\n• प्रत्येक प्रतिद्वंद्वी से कमांडर डैमेज ट्रैक करने के लिए तलवार आइकन पर टैप करें (21 = हार)।' },
-      'bn': { 'title': 'ম্যাজিক: দ্য গ্যাদারিং', 'start_life': 'ফরম্যাট', 'players': 'খেলোয়াড়', 'reset': 'রিসেট', 'rules_title': 'নিয়ম', 'ok': 'বুঝেছি', 'cancel': 'বাতিল', 'save': 'সংরক্ষণ', 'rename_title': 'নাম পরিবর্তন', 'planeswalker': 'প্লেনসওয়াকার', 'commander_dmg': 'কমান্ডার ড্যামেজ', 'rules_text': 'MTG লাইফ কাউন্টার।\n\n• ২০ বা ৪০ নির্বাচন করুন।\n• -৫/-১/+১/+৫ বোতাম ব্যবহার করুন।\n• নাম পরিবর্তন করতে ট্যাপ করুন।\n• প্রতিটি প্রতিপক্ষের কমান্ডার ড্যামেজ ট্র্যাক করতে তলোয়ার আইকনে ট্যাপ করুন (২১ = পরাজয়)।' },
-    };
-
-    if (dictionary.containsKey(_currentLang) && dictionary[_currentLang]!.containsKey(key)) {
-      return dictionary[_currentLang]![key]!;
-    }
-    return dictionary['en']![key] ?? key;
+  void _changeLife(int index, int delta) {
+    _mutate(() {
+      game.players[index].life += delta;
+      _trackDelta(index, delta);
+    });
   }
 
-  // --- LOGIK ---
+  void _changeCommander(int target, int source, int delta) {
+    _mutate(() {
+      final applied = game.players[target].changeCommanderDamage(source, delta);
+      _trackDelta(target, -applied);
+    });
+  }
 
-  void _resetGame() {
-    setState(() {
-      players = List.generate(playerCount, (index) => {
-        'name': '${_t('planeswalker')} ${index + 1}',
-        'life': startLife,
-        // Commander-Schaden, den dieser Spieler von jedem Gegner erhalten hat (Index = Gegner-Index)
-        'cmdDamage': List<int>.filled(playerCount, 0),
+  // --- Zug-Timer ---
+
+  // Die Uhr läuft nur, solange der Timer aktiv ist und jemand am Zug ist
+  void _syncTicker() {
+    final shouldRun = game.turnTimerEnabled && game.activePlayer != null;
+    if (shouldRun && _ticker == null) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
       });
-      _activeMenu = 0;
-    });
-    _persist();
+    } else if (!shouldRun) {
+      _ticker?.cancel();
+      _ticker = null;
+    }
   }
 
-  void _updateLife(int index, int amount) {
-    HapticFeedback.selectionClick();
+  void _startTurns(int player) {
+    _mutate(() {
+      game.startTurns(player);
+      _turnStartedAt = clock.now();
+    });
+    _syncTicker();
+  }
+
+  void _passTurn() {
+    _mutate(() {
+      game.passTurn(_layout.clockwiseOrder);
+      _turnStartedAt = clock.now();
+    });
+  }
+
+  String get _turnLabel {
+    final elapsed = clock.now().difference(_turnStartedAt);
+    final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
+    final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+    return '${mtgT('round')} ${game.round} · $minutes:$seconds';
+  }
+
+  // --- Wer beginnt? ---
+
+  void _startHighRoll() {
+    HapticFeedback.heavyImpact();
+    _cancelRollTimers();
     setState(() {
-      players[index]['life'] += amount;
-      _activeMenu = 0;
+      _menuOpen = false;
+      _commanderEdit = null;
+      _rollValue.clear();
+      _rollWinner = null;
+      _rollTie = false;
+      _rollContenders = {for (var i = 0; i < game.playerCount; i++) i};
+      _rollPhase
+        ..clear()
+        ..addAll({for (final i in _rollContenders) i: MtgRollPhase.ready});
     });
-    _persist();
   }
 
-  void _updateCommanderDamage(int playerIndex, int fromOpponentIndex, int amount) {
-    HapticFeedback.selectionClick();
+  void _roll(int player) {
+    if (_rollPhase[player] != MtgRollPhase.ready) return;
+    setState(() => _rollPhase[player] = MtgRollPhase.rolling);
+    _rollTimers.add(Timer(_rollAnimation, () {
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _rollValue[player] = _random.nextInt(20) + 1;
+        _rollPhase[player] = MtgRollPhase.result;
+        _evaluateRolls();
+      });
+    }));
+  }
+
+  // Wenn alle, die noch im Rennen sind, gewürfelt haben: Sieger bestimmen oder bei
+  // Gleichstand nur die Gleichstehenden nochmal würfeln lassen.
+  void _evaluateRolls() {
+    if (_rollContenders.any((p) => _rollPhase[p] != MtgRollPhase.result)) return;
+    final best = _rollContenders.map((p) => _rollValue[p]!).reduce(max);
+    final top = _rollContenders.where((p) => _rollValue[p] == best).toSet();
+    if (top.length > 1) {
+      _rollContenders = top;
+      _rollTie = true;
+      for (final p in top) {
+        _rollPhase[p] = MtgRollPhase.ready;
+      }
+      return;
+    }
+    _rollWinner = top.first;
+    if (game.turnTimerEnabled) {
+      game.startTurns(_rollWinner!);
+      _turnStartedAt = clock.now();
+      _persist();
+      _syncTicker();
+    }
+  }
+
+  void _dismissHighRoll() {
+    _cancelRollTimers();
     setState(() {
-      List<int> dmg = players[playerIndex]['cmdDamage'];
-      int newVal = dmg[fromOpponentIndex] + amount;
-      if (newVal < 0) return;
-      dmg[fromOpponentIndex] = newVal;
-      // Commander-Schaden reduziert auch das reguläre Leben
-      players[playerIndex]['life'] -= amount;
+      _rollPhase.clear();
+      _rollValue.clear();
+      _rollContenders = {};
+      _rollWinner = null;
+      _rollTie = false;
     });
-    _persist();
   }
 
-  void _showRenameDialog(int index) {
-    _renameController.text = players[index]['name'];
+  void _cancelRollTimers() {
+    for (final t in _rollTimers) {
+      t.cancel();
+    }
+    _rollTimers.clear();
+  }
+
+  MtgRollState? _rollStateFor(int player) {
+    final phase = _rollPhase[player];
+    if (phase == null) return null;
+    return MtgRollState(
+      phase: phase,
+      value: _rollValue[player],
+      decided: _rollWinner != null,
+      isWinner: _rollWinner == player,
+      isTieReroll: _rollTie && _rollContenders.contains(player),
+    );
+  }
+
+  // --- Menü & Einstellungen ---
+
+  void _closeMenu() => setState(() => _menuOpen = false);
+
+  void _clearTransient() {
+    _commanderEdit = null;
+    _cancelRollTimers();
+    _rollPhase.clear();
+    _rollValue.clear();
+    _rollWinner = null;
+    _deltas.clear();
+    for (final t in _deltaTimers.values) {
+      t.cancel();
+    }
+    _deltaTimers.clear();
+  }
+
+  void _restart() {
+    HapticFeedback.mediumImpact();
+    _mutate(() {
+      _clearTransient();
+      game.restart();
+      _menuOpen = false;
+    });
+    _syncTicker();
+  }
+
+  void _setPlayerCount(int count) {
+    if (count == game.playerCount) return;
+    _mutate(() {
+      _clearTransient();
+      game = MtgGame.create(
+        playerCount: count,
+        startLife: game.startLife,
+        defaultName: _defaultName,
+        keep: game.players,
+        turnTimerEnabled: game.turnTimerEnabled,
+        missedTriggersEnabled: game.missedTriggersEnabled,
+      );
+    });
+    _syncTicker();
+  }
+
+  void _setStartLife(int life) {
+    _mutate(() {
+      _clearTransient();
+      game.startLife = life;
+      game.restart();
+    });
+    _syncTicker();
+  }
+
+  void _setTurnTimer(bool enabled) {
+    _mutate(() {
+      game.turnTimerEnabled = enabled;
+      if (!enabled) game.resetTurns();
+    });
+    _syncTicker();
+  }
+
+  void _openPlayerSheet(int index) {
+    setState(() => _commanderEdit = null);
+    showMtgPlayerSheet(
+      context: context,
+      game: () => game,
+      index: index,
+      accent: accent,
+      mutate: _mutate,
+      changeCommander: _changeCommander,
+      recents: () => _recentArts,
+      setArt: (art) => _setArt(index, art),
+      searchArt: () => showMtgCommanderSearch(context, client: _scryfall, recents: _recentArts, accent: accent),
+    );
+  }
+
+  Future<void> _setArt(int index, MtgCommanderArt? art) async {
+    _mutate(() => game.players[index].art = art);
+    if (art == null) return;
+    final recents = await MtgRecentCommanders.add(_recentArts, art);
+    if (mounted) setState(() => _recentArts = recents);
+  }
+
+  void _openSettings() {
+    _closeMenu();
+    showMtgSetupSheet(
+      context: context,
+      game: () => game,
+      accent: accent,
+      onPlayerCount: _setPlayerCount,
+      onLayout: (i) => _mutate(() => game.layoutIndex = i),
+      onStartLife: _setStartLife,
+      onTurnTimer: _setTurnTimer,
+      onMissedTriggers: (v) => _mutate(() => game.missedTriggersEnabled = v),
+    );
+  }
+
+  void _showHelp() {
+    _closeMenu();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: primaryColor)),
-        title: Text(_t('rename_title'), style: const TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: _renameController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: primaryColor, width: 2)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(_t('cancel'), style: const TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                players[index]['name'] = _renameController.text.trim();
-              });
-              _persist();
-              Navigator.pop(context);
-            },
-            child: Text(_t('save'), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-          ),
-        ],
+        backgroundColor: kMtgSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: accent)),
+        title: Text(mtgT('rules_title'), style: TextStyle(color: accent)),
+        content: SingleChildScrollView(child: Text(mtgT('rules_text'), style: const TextStyle(color: Colors.white70, height: 1.5))),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(mtgT('ok'), style: TextStyle(color: accent)))],
       ),
     );
   }
 
-  void _showCommanderDamageSheet(int playerIndex) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: surfaceColor,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          List<int> dmg = players[playerIndex]['cmdDamage'];
-          return Container(
-            padding: const EdgeInsets.all(20),
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  // Reihenfolge nach Häufigkeit während eines Spielabends
+  List<MtgMenuItem> get _menuItems => [
+        MtgMenuItem(key: 'high_roll', icon: Icons.emoji_events, label: mtgT('high_roll'), color: kMtgPlayerColors[6], onTap: _startHighRoll),
+        MtgMenuItem(
+            key: 'dice',
+            icon: Icons.casino,
+            label: mtgT('dice'),
+            color: kMtgPlayerColors[7],
+            onTap: () {
+              _closeMenu();
+              showMtgDiceDialog(context, accent);
+            }),
+        MtgMenuItem(key: 'settings', icon: Icons.settings, label: mtgT('settings'), color: kMtgPlayerColors[4], onTap: _openSettings),
+        MtgMenuItem(key: 'restart', icon: Icons.refresh, label: mtgT('restart'), color: kMtgPlayerColors[0], onTap: _restart),
+        MtgMenuItem(key: 'help', icon: Icons.help_outline, label: mtgT('help'), color: kMtgPlayerColors[3], onTap: _showHelp),
+        MtgMenuItem(key: 'exit', icon: Icons.logout, label: mtgT('exit'), color: Colors.white, onTap: () => Navigator.of(context).maybePop()),
+      ];
+
+  Widget _buildTile(int index) {
+    final edit = _commanderEdit;
+    final timerOn = game.turnTimerEnabled;
+    final isActive = timerOn && game.activePlayer == index;
+    return MtgPlayerTile(
+      key: ValueKey('mtg_tile_$index'),
+      index: index,
+      players: game.players,
+      recentDelta: _deltas[index],
+      commanderEditSource: edit != null && edit.target == index ? edit.source : null,
+      roll: _rollStateFor(index),
+      missedTriggersEnabled: game.missedTriggersEnabled,
+      isActiveTurn: isActive,
+      turnLabel: isActive ? _turnLabel : null,
+      showStartTurn: timerOn && game.activePlayer == null,
+      menuAnchor: _layout.menuAnchorInSeat(index),
+      onLifeChange: (d) => _changeLife(index, d),
+      onOpenSheet: () => _openPlayerSheet(index),
+      onCommanderDrop: (source) => setState(() => _commanderEdit = (target: index, source: source)),
+      onCommanderChange: (source, d) => _changeCommander(index, source, d),
+      onOpenCommanderEdit: (source) => setState(() => _commanderEdit = (target: index, source: source)),
+      onCloseCommanderEdit: () => setState(() => _commanderEdit = null),
+      onTaxChange: (d) => _mutate(() => game.players[index].changeCounter(MtgCounter.tax, d)),
+      onMissedTriggerChange: (d) => _mutate(() {
+        final p = game.players[index];
+        p.missedTriggersUsed = (p.missedTriggersUsed + d).clamp(0, kMissedTriggersPerGame);
+      }),
+      onRoll: () => _roll(index),
+      onDismissRoll: _dismissHighRoll,
+      onPassTurn: _passTurn,
+      onStartTurn: () => _startTurns(index),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const Scaffold(backgroundColor: Colors.black);
+    return PopScope(
+      // Zurück-Geste schliesst zuerst das Menü bzw. bricht "Wer beginnt?" ab
+      canPop: !_menuOpen && _rollPhase.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_rollPhase.isNotEmpty) {
+          _dismissHighRoll();
+        } else {
+          _closeMenu();
+        }
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: LayoutBuilder(builder: (context, box) {
+              const pad = 6.0, gap = 6.0;
+              // Menü-Knopf auf der Kachelgrenze nahe der Mitte (nie mitten auf einer Lebensanzeige)
+              final anchor = _layout.menuAnchorPixels(Size(box.maxWidth - 2 * pad, box.maxHeight - 2 * pad), gap) + const Offset(pad, pad);
+              const buttonSize = MtgCenterButton.size;
+              return Stack(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "${_t('commander_dmg')} — ${players[playerIndex]['name']}",
-                        style: TextStyle(color: primaryColor, fontSize: 18, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.grey)),
-                  ],
+                Padding(
+                  padding: const EdgeInsets.all(pad),
+                  child: MtgLayoutGrid(
+                    layout: _layout,
+                    gap: gap,
+                    seatBuilder: (index, _) => _buildTile(index),
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: playerCount,
-                    itemBuilder: (context, opponentIndex) {
-                      if (opponentIndex == playerIndex) return const SizedBox.shrink();
-                      int val = dmg[opponentIndex];
-                      bool lethal = val >= 21;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: lethal ? Colors.red.withOpacity(0.15) : Colors.black26,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: lethal ? Colors.redAccent : Colors.white10),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                players[opponentIndex]['name'],
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (lethal)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
-                              ),
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline, color: Colors.grey),
-                              onPressed: () {
-                                _updateCommanderDamage(playerIndex, opponentIndex, -1);
-                                setModalState(() {});
-                              },
-                            ),
-                            SizedBox(
-                              width: 30,
-                              child: Text(
-                                "$val",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: lethal ? Colors.redAccent : primaryColor, fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.add_circle_outline, color: primaryColor),
-                              onPressed: () {
-                                _updateCommanderDamage(playerIndex, opponentIndex, 1);
-                                setModalState(() {});
-                              },
-                            ),
-                          ],
-                        ),
-                      );
+                if (_menuOpen) Positioned.fill(child: MtgFloatingMenu(items: _menuItems, onClose: _closeMenu)),
+                // Bei offenem Menü übernimmt dessen eigener ✕-Knopf
+                if (!_menuOpen) Positioned(
+                  left: anchor.dx - buttonSize / 2,
+                  top: anchor.dy - buttonSize / 2,
+                  child: MtgCenterButton(
+                    // Während "Wer beginnt?" läuft, bricht der Knopf das Würfeln ab
+                    open: _menuOpen || _rollPhase.isNotEmpty,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      if (_rollPhase.isNotEmpty) {
+                        _dismissHighRoll();
+                        return;
+                      }
+                      setState(() {
+                        _menuOpen = !_menuOpen;
+                        _commanderEdit = null;
+                      });
                     },
                   ),
                 ),
               ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showRules() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: primaryColor)),
-        title: Text(_t('rules_title'), style: TextStyle(color: primaryColor)),
-        content: Text(_t('rules_text'), style: const TextStyle(color: Colors.white70, height: 1.5)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(_t('ok'), style: TextStyle(color: primaryColor)))
-        ],
-      ),
-    );
-  }
-
-  // --- UI BUILDING ---
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (_activeMenu != 0) setState(() => _activeMenu = 0);
-      },
-      child: Scaffold(
-        backgroundColor: bgColor,
-        appBar: AppBar(
-          title: Text(_t('title')),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          foregroundColor: primaryColor,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.help_outline),
-              onPressed: _showRules,
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            // --- TOP MENU ---
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-              color: Colors.black12,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildConfigButton(
-                          icon: Icons.favorite,
-                          label: startLife == 20 ? "Standard" : "Commander",
-                          title: _t('start_life'),
-                          isActive: _activeMenu == 1,
-                          onTap: () => setState(() => _activeMenu = _activeMenu == 1 ? 0 : 1),
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: _buildConfigButton(
-                          icon: Icons.groups,
-                          label: "$playerCount",
-                          title: _t('players'),
-                          isActive: _activeMenu == 2,
-                          onTap: () => setState(() => _activeMenu = _activeMenu == 2 ? 0 : 2),
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      // Reset Button
-                      Container(
-                        height: 60,
-                        width: 60,
-                        decoration: BoxDecoration(
-                          color: surfaceColor,
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: primaryColor.withAlpha(50)),
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.refresh, color: primaryColor),
-                          onPressed: _resetGame,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // --- INLINE SCHIEBEREGLER / AUSWAHL ---
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: _activeMenu != 0 ? 70 : 0,
-                    margin: EdgeInsets.only(top: _activeMenu != 0 ? 15 : 0),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _activeMenu == 1
-                            ? _buildLifeOptions()
-                            : (_activeMenu == 2 ? _buildPlayerOptions() : []),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // --- GAME AREA ---
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(15.0),
-                child: playerCount == 2
-                    ? _buildTwoPlayerLayout()
-                    : _buildGridPlayerLayout(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildLifeOptions() {
-    // Bei MTG gibt es in der Regel primär 20 (Standard/Modern) und 40 (Commander).
-    // Wir bieten auch 30 (Brawl) an.
-    final options = [20, 30, 40];
-    return options.map((val) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      child: ChoiceChip(
-        label: Text("$val", style: TextStyle(color: startLife == val ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        selected: startLife == val,
-        selectedColor: primaryColor,
-        backgroundColor: surfaceColor,
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-        onSelected: (_) {
-          setState(() {
-            startLife = val;
-            _activeMenu = 0;
-            _resetGame();
-          });
-        },
-      ),
-    )).toList();
-  }
-
-  List<Widget> _buildPlayerOptions() {
-    // Bei MTG Commander sind 3 bis 6 Spieler üblich
-    return [2, 3, 4, 5, 6].map((val) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      child: ChoiceChip(
-        label: Text("$val", style: TextStyle(color: playerCount == val ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        selected: playerCount == val,
-        selectedColor: primaryColor,
-        backgroundColor: surfaceColor,
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-        onSelected: (_) {
-          setState(() {
-            playerCount = val;
-            _activeMenu = 0;
-            _resetGame();
-          });
-        },
-      ),
-    )).toList();
-  }
-
-  Widget _buildConfigButton({required IconData icon, required String label, required String title, required bool isActive, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 60,
-        decoration: BoxDecoration(
-          color: isActive ? primaryColor.withAlpha(40) : surfaceColor,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: isActive ? primaryColor : primaryColor.withAlpha(50), width: isActive ? 2 : 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(width: 12), // NEU: Padding links vom Icon
-            Icon(icon, color: primaryColor, size: 24),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(color: isActive ? primaryColor : Colors.grey, fontSize: 10)),
-                  Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- LAYOUTS ---
-
-  int _maxCommanderDamage(int index) {
-    List<int> dmg = players[index]['cmdDamage'];
-    if (dmg.isEmpty) return 0;
-    return dmg.reduce(max);
-  }
-
-  Widget _cardFor(int index) {
-    return _MtgCard(
-      name: players[index]['name'],
-      life: players[index]['life'],
-      color: primaryColor,
-      onChanged: (val) => _updateLife(index, val),
-      onRename: () => _showRenameDialog(index),
-      maxCommanderDamage: _maxCommanderDamage(index),
-      onCommanderDamage: () => _showCommanderDamageSheet(index),
-    );
-  }
-
-  Widget _buildTwoPlayerLayout() {
-    return Column(
-      children: [
-        // P1 (oben) - 180° gedreht, damit man sie von der anderen Tischseite lesen kann
-        Expanded(
-          child: RotatedBox(
-            quarterTurns: 2,
-            child: _cardFor(0),
+            );
+            }),
           ),
         ),
-        const SizedBox(height: 15),
-        // P2 (unten)
-        Expanded(
-          child: _cardFor(1),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGridPlayerLayout() {
-    int totalRows = (playerCount / 2).ceil();
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: playerCount > 4 ? 0.7 : 0.85, // Bei 5-6 Spielern Karten etwas höher strecken
-        crossAxisSpacing: 15,
-        mainAxisSpacing: 15,
-      ),
-      itemCount: playerCount,
-      itemBuilder: (context, index) {
-        int row = index ~/ 2;
-        // Obere Zeilen 180° gedreht, damit Spieler auf der "anderen Tischseite" lesen können
-        bool rotate = row < totalRows ~/ 2;
-        Widget card = _cardFor(index);
-        return rotate ? RotatedBox(quarterTurns: 2, child: card) : card;
-      },
-    );
-  }
-}
-
-// --- KARTE WIDGET FÜR MTG ---
-class _MtgCard extends StatelessWidget {
-  final String name;
-  final int life;
-  final Color color;
-  final Function(int) onChanged;
-  final VoidCallback onRename;
-  final int maxCommanderDamage;
-  final VoidCallback onCommanderDamage;
-
-  const _MtgCard({
-    required this.name,
-    required this.life,
-    required this.color,
-    required this.onChanged,
-    required this.onRename,
-    this.maxCommanderDamage = 0,
-    required this.onCommanderDamage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    bool lethalCommander = maxCommanderDamage >= 21;
-    return Container(
-      padding: const EdgeInsets.only(top: 15),
-      decoration: BoxDecoration(
-        color: const Color(0xFF30363B),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: lethalCommander ? Colors.redAccent : color.withOpacity(0.3), width: lethalCommander ? 3 : 2),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Name (klickbar) + Commander-Schaden Button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: GestureDetector(
-                  onTap: onRename,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black12,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Flexible(child: Text(name, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
-                        const SizedBox(width: 8),
-                        Icon(Icons.edit, size: 14, color: color.withOpacity(0.5)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: onCommanderDamage,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: lethalCommander ? Colors.redAccent.withOpacity(0.2) : Colors.black12,
-                    borderRadius: BorderRadius.circular(10),
-                    border: lethalCommander ? Border.all(color: Colors.redAccent) : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.gavel, size: 14, color: lethalCommander ? Colors.redAccent : color.withOpacity(0.7)),
-                      if (maxCommanderDamage > 0) ...[
-                        const SizedBox(width: 4),
-                        Text("$maxCommanderDamage", style: TextStyle(color: lethalCommander ? Colors.redAccent : color, fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Life
-          Expanded(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                    "$life",
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 80, height: 1.0)
-                ),
-              ),
-            ),
-          ),
-
-          // MTG spezifische Buttons (Bottom)
-          SizedBox(
-            height: 52,
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => onChanged(-5),
-                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(23)),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(23)),
-                      ),
-                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("-5", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
-                    ),
-                  ),
-                ),
-                Container(width: 1, color: Colors.white10),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => onChanged(-1),
-                    child: Container(
-                      color: Colors.black26,
-                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("-1", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
-                    ),
-                  ),
-                ),
-                Container(width: 1, color: Colors.white10),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => onChanged(1),
-                    child: Container(
-                      color: Colors.black26,
-                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("+1", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
-                    ),
-                  ),
-                ),
-                Container(width: 1, color: Colors.white10),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => onChanged(5),
-                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(23)),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(23)),
-                      ),
-                      child: const Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text("+5", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )
-        ],
       ),
     );
   }
